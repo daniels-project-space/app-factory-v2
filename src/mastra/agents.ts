@@ -17,6 +17,12 @@ const WEB_COMPAT = `HARD CONSTRAINT — react-native-web cleanliness: every scre
 - Test-id discipline: give every tappable element a stable testID.
 - State must work without a backend: the app runs in demo mode with local storage seeded by realistic fixture data (fixtures are real-sounding, never "John Doe"/"lorem").`;
 
+const TOKEN_DISCIPLINE = `TOKEN DISCIPLINE (context is a budget):
+- Read a file ONCE, then work from memory; never re-read a file you just edited (edits succeed or error loudly).
+- Prefer targeted Edit over full-file rewrites; prefer Grep for locating code over reading whole files.
+- Never run expo start/export, git, or npm install — the harness owns those. Run "npx tsc --noEmit" in batches (after every 4-5 files), not per file.
+- No exploratory codebase walks: read only the files your current task names or imports directly.`;
+
 function coding(opts: {
   id: string;
   description: string;
@@ -91,13 +97,15 @@ export const designerAgent = coding({
   model: MODELS.design,
   maxTurns: BUDGETS.design,
   append: `You are the factory's art director working inside ONE Expo app directory.
+SCOPE: read ONLY .factory/brief.md, constants/theme.ts, components/ui/index.ts and app.json — do NOT walk the codebase; the scaffold is known-good and your job is direction, not audit.
 Produce the app's design DNA:
 1. Rewrite constants/theme.ts tokens (colors incl. dark/light, type scale, spacing, radii) to match the brand brief — distinctive, not defaults.
 2. Write DESIGN.md: art direction, per-screen layout specs for every MVP screen, the ONE signature element (describe exactly how it's built with RN primitives/SVG — web-compatible), motion rules, empty/loading/error state treatments, copywriting voice with real example strings.
-3. Update app.json name/slug/scheme/colors.
-Keep it buildable: run npx tsc --noEmit after edits and fix what you broke.
+3. Update app.json name/scheme/colors (never touch experiments.baseUrl).
+Keep it buildable: run npx tsc --noEmit once after edits and fix what you broke.
 ${MANIFESTO}
-${WEB_COMPAT}`,
+${WEB_COMPAT}
+${TOKEN_DISCIPLINE}`,
 });
 
 export const builderAgent = coding({
@@ -113,9 +121,10 @@ Protocol:
 4. Quality loop: after every 3-5 files run "npx tsc --noEmit" and fix errors immediately. Never write more than 5 files unchecked.
 5. Zero placeholders: no TODO/lorem/sample/foo@example. Demo-mode fixtures must read like a real user's data.
 6. When done, write .factory/report.json: {"completedItems": [exact roadmap titles], "fixedIssues": [fingerprints], "notes": "..."}.
-Do NOT touch: app/_layout.tsx provider order, lib/payments.ts interfaces, templates outside this app folder. Do NOT run expo start, builds, or git commands — the harness handles those.
+Do NOT touch: app/_layout.tsx provider order, lib/payments.ts interfaces, templates outside this app folder.
 ${MANIFESTO}
-${WEB_COMPAT}`,
+${WEB_COMPAT}
+${TOKEN_DISCIPLINE}`,
 });
 
 export const fixerAgent = coding({
@@ -127,7 +136,8 @@ export const fixerAgent = coding({
 For each: reproduce mentally from the detail, find root cause, fix properly (no @ts-ignore, no empty catch, no hiding the symptom), verify with "npx tsc --noEmit".
 If a defect is impossible to fix (e.g. depends on a missing credential), leave it and say so in the report.
 When done write .factory/report.json: {"completedItems": [], "fixedIssues": [fingerprints actually fixed], "notes": "..."}.
-${WEB_COMPAT}`,
+${WEB_COMPAT}
+${TOKEN_DISCIPLINE}`,
 });
 
 export const visionAgent = thinking({
@@ -148,8 +158,9 @@ export const reviewerAgent = coding({
   maxTurns: BUDGETS.review,
   append: `You are the factory's principal reviewer doing the FINAL pass on ONE Expo app directory before the human ship gate.
 Your contract: judge ONLY against the roadmap acceptance criteria you are given and basic shippability (app builds, navigation works, paywall flow reachable, no placeholder content). You may NOT invent new scope, new features, or style preferences beyond DESIGN.md.
-Check the code and the provided screenshots. For each roadmap item, verify its acceptance criterion honestly.
-Verdicts: "approve" (shippable), "fix_first" (max 8 concrete P0/P1 defects), "hold_for_daniel" (something only the human can decide, e.g. legal/credentials). A P2 polish wish is NOT grounds for fix_first.`,
+PROTOCOL (evidence-first, token-lean): 1) read ALL screenshots first — most acceptance criteria verify or fail visually; 2) only for criteria the screenshots cannot settle, read the specific implementing file (Grep to locate it; read nothing else); 3) never audit the whole codebase.
+Verdicts: "approve" (shippable), "fix_first" (max 8 concrete P0/P1 defects), "hold_for_daniel" (something only the human can decide, e.g. legal/credentials). A P2 polish wish is NOT grounds for fix_first.
+${TOKEN_DISCIPLINE}`,
 });
 
 export const packagerAgent = coding({

@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import type { ClaudeSDKAgent } from "@mastra/claude";
 import type { z } from "zod";
 import { cvxMutation } from "@/factory/convex";
+import { EFFORT, SESSION_USD_CAP } from "@/factory/config";
 
 /**
  * Single execution wrapper for every Mastra agent run. Guarantees:
@@ -55,6 +56,11 @@ export async function runAgent<S extends z.ZodTypeAny | undefined = undefined>(
       sdkOptions: {
         model: opts.model,
         env: claudeEnv(),
+        // Effort routing: thinking bills as output — mechanical stages run lean,
+        // judgment stages keep depth. Session USD cap kills a runaway session
+        // without touching the daily budget.
+        effort: EFFORT[opts.stage] ?? "medium",
+        maxBudgetUsd: SESSION_USD_CAP[opts.stage] ?? 6,
         ...(opts.cwd ? { cwd: opts.cwd } : {}),
         ...(opts.maxTurns ? { maxTurns: opts.maxTurns } : {}),
       },

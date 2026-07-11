@@ -36,7 +36,7 @@ export const RoadmapSchema = z.object({
       }),
     )
     .min(12)
-    .max(48),
+    .max(32),
 });
 export type Roadmap = z.infer<typeof RoadmapSchema>;
 

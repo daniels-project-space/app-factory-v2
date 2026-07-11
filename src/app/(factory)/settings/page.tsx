@@ -153,6 +153,12 @@ export default function SettingsPage() {
           value={settings.forgeScoutEnabled}
           onChange={(v) => update({ forgeScoutEnabled: v })}
         />
+        <Toggle
+          label="Idea scout"
+          hint="daily autonomous idea generation — 3-5 kill-tested pitches on the ideas board"
+          value={settings.ideaScoutEnabled ?? true}
+          onChange={(v) => update({ ideaScoutEnabled: v })}
+        />
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-px border border-line bg-line">

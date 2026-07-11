@@ -1,5 +1,5 @@
 import { task, tasks } from "@trigger.dev/sdk";
-import { mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { cvxMutation, cvxQuery, logEvent } from "@/factory/convex";
 import { BUDGETS, R2 as R2CFG } from "@/factory/config";
@@ -273,6 +273,35 @@ async function runDesign(p: Payload, app: AppDoc, workerId: string) {
     ? await portForgeSource(repo, app.slug, app.forgeSource.repoUrl)
     : scaffoldApp(repo, app.slug, app.name);
   writeBriefFile(dir, app.brief ?? app.idea);
+
+  // Ported apps arrive with their own DESIGN.md — an Opus redesign would be
+  // pure token burn AND scope drift. Honor the existing design, gate as usual.
+  if (!app.forgeSource && existsSync(join(dir, "DESIGN.md")) && app.buildRound === 0) {
+    const settings0 = (await cvxQuery("intake:getSettings")) as { designSignoffRequired: boolean };
+    if (settings0.designSignoffRequired) {
+      await cvxMutation("intake:requestApproval", {
+        appId: p.appId,
+        stage: "design",
+        question: `${app.name} ships with an existing DESIGN.md (ported app) — approve it to start hardening builds?`,
+        context: `apps/${app.slug}/DESIGN.md kept as-is; no redesign tokens spent.`,
+      });
+      await cvxMutation("apps:completeStage", {
+        id: p.appId,
+        workerId,
+        outcome: "wait_signoff",
+        summary: "Existing design honored (port) — awaiting sign-off, zero LLM tokens",
+      });
+      return { signoff: "requested", skipped: "existing DESIGN.md" };
+    }
+    await cvxMutation("apps:completeStage", {
+      id: p.appId,
+      workerId,
+      outcome: "advance",
+      summary: "Existing design honored (port) — zero LLM tokens",
+    });
+    return { signoff: "auto", skipped: "existing DESIGN.md" };
+  }
+
   await ensureDeps(dir);
 
   const forgeNote = app.forgeSource
@@ -332,7 +361,9 @@ async function runBuild(p: Payload, app: AppDoc, workerId: string) {
   // Next slice: open issues first, then the first incomplete milestone's items.
   const incomplete = roadmap.filter((r) => r.status === "todo" || r.status === "in_progress");
   const nextMilestone = incomplete.length ? Math.min(...incomplete.map((r) => r.milestone)) : 0;
-  const slice = incomplete.filter((r) => r.milestone === nextMilestone).slice(0, 12);
+  const slice = incomplete
+    .filter((r) => r.milestone === nextMilestone)
+    .slice(0, BUDGETS.sliceSize);
   const fixables = openIssues
     .filter((i) => i.attempts < BUDGETS.maxFixAttemptsPerIssue)
     .slice(0, 10);
