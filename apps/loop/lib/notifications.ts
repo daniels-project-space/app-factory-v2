@@ -1,5 +1,5 @@
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 
 import { ANCHORS, ANCHOR_ORDER, type AnchorKey } from '@/constants/anchors';
 
@@ -57,6 +57,30 @@ export async function requestNotificationPermission(): Promise<boolean> {
   if (current.granted) return true;
   const requested = await Notifications.requestPermissionsAsync();
   return requested.granted;
+}
+
+export type NotificationPermissionStatus = 'granted' | 'denied' | 'undetermined';
+
+/**
+ * Reads the OS-level permission status without prompting — Settings uses
+ * this to tell "the app's own toggle is off" apart from "the OS denied us
+ * and a re-request would be a silent no-op," which needs the explicit
+ * off-ramp to system settings instead. Resolves `'undetermined'` on web,
+ * where there's no OS permission to read.
+ */
+export async function getNotificationPermissionStatus(): Promise<NotificationPermissionStatus> {
+  if (Platform.OS === 'web') return 'undetermined';
+  const current = await Notifications.getPermissionsAsync();
+  return current.status;
+}
+
+/**
+ * Once a user has denied the OS prompt, iOS/Android won't let the app ask
+ * again — the only re-enable path is the system Settings app. No-ops on web.
+ */
+export async function openSystemNotificationSettings(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  await Linking.openSettings();
 }
 
 /**

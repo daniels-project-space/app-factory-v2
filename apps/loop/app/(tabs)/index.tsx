@@ -4,9 +4,9 @@ import { useEffect, useMemo } from 'react';
 import { Pressable, View, StyleSheet } from 'react-native';
 
 import { Flame } from '@/components/Flame';
-import { Badge, Card, ListRow, ProgressRing, Screen, Text } from '@/components/ui';
+import { Badge, Card, EmptyState, ListRow, ProgressRing, Screen, Sheet, Text } from '@/components/ui';
 import { ANCHORS, ANCHOR_ORDER, HABIT_BY_ID, anchorForHour, type AnchorKey } from '@/constants/anchors';
-import { FLAME_DIMMED_MESSAGE, REASSURANCE_COPY } from '@/constants/copy';
+import { COMEBACK_PROMPT, FLAME_DIMMED_MESSAGE, REASSURANCE_COPY } from '@/constants/copy';
 import { useTheme } from '@/hooks/useTheme';
 import { todayKey } from '@/lib/date';
 import { isAnchorComplete, useHabits } from '@/store/habits';
@@ -53,6 +53,8 @@ export default function HomeScreen() {
   const anchorCompletionEvents = useHabits((s) => s.anchorCompletionEvents);
   const flameJustDimmed = useHabits((s) => s.flameJustDimmed);
   const acknowledgeFlameDimmed = useHabits((s) => s.acknowledgeFlameDimmed);
+  const comebackPromptDue = useHabits((s) => s.comebackPromptDue);
+  const dismissComebackPrompt = useHabits((s) => s.dismissComebackPrompt);
   const hardPaywallTriggered = useSettings((s) => s.hardPaywallTriggered);
   const markHardPaywallTriggered = useSettings((s) => s.markHardPaywallTriggered);
 
@@ -90,6 +92,19 @@ export default function HomeScreen() {
 
   const goToPaywall = () => router.push('/paywall');
 
+  // Comeback Sheet's habit picks: the user's own first committed habit per
+  // anchor (not the full library) — restarting should feel like picking a
+  // thing they already chose back up, not a fresh onboarding decision.
+  const comebackOptions = ANCHOR_ORDER.map((key) => {
+    const habitId = anchorHabits[key][0];
+    return habitId ? HABIT_BY_ID[habitId] : undefined;
+  }).filter((h): h is NonNullable<typeof h> => !!h);
+
+  const restartWithHabit = (habitId: string) => {
+    if (!completed[habitId]) toggleHabit(habitId);
+    dismissComebackPrompt();
+  };
+
   return (
     <Screen scroll testID="home-screen">
       <View style={[styles.headerRow, { marginTop: theme.spacing.lg }]}>
@@ -115,7 +130,7 @@ export default function HomeScreen() {
         </Text>
       </Card>
 
-      {flameJustDimmed ? (
+      {flameJustDimmed && !comebackPromptDue ? (
         <View
           testID="home-flame-dimmed-banner"
           style={[
@@ -218,58 +233,112 @@ export default function HomeScreen() {
                     testID={`anchor-${key}-ring`}
                   >
                     <Text variant="caption" color="textMuted">
-                      {anchorKept}/{habits.length}
+                      {habits.length > 0 ? `${anchorKept}/${habits.length}` : '—'}
                     </Text>
                   </ProgressRing>
                 )}
               </View>
 
               <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-                {habits.map((habit, i) => {
-                  const isChecked = !!completed[habit.id];
-                  const habitLocked = anchorLocked || (!isPro && i >= FREE_HABIT_LIMIT);
+                {habits.length === 0 ? (
+                  <EmptyState
+                    icon="leaf-outline"
+                    title="Nothing here yet."
+                    message="You didn't pick a habit for this anchor — skip it and tend the other two."
+                    testID={`anchor-${key}-empty`}
+                  />
+                ) : (
+                  habits.map((habit, i) => {
+                    const isChecked = !!completed[habit.id];
+                    const habitLocked = anchorLocked || (!isPro && i >= FREE_HABIT_LIMIT);
 
-                  if (habitLocked) {
+                    if (habitLocked) {
+                      return (
+                        <ListRow
+                          key={habit.id}
+                          testID={`habit-${habit.id}`}
+                          title={habit.title}
+                          divider={i < habits.length - 1}
+                          onPress={goToPaywall}
+                          titleColor="textMuted"
+                          left={<Ionicons name="lock-closed-outline" size={22} color={theme.colors.textMuted} />}
+                          right={<Badge label="Pro" tone="accent" />}
+                        />
+                      );
+                    }
+
                     return (
                       <ListRow
                         key={habit.id}
                         testID={`habit-${habit.id}`}
                         title={habit.title}
                         divider={i < habits.length - 1}
-                        onPress={goToPaywall}
-                        titleColor="textMuted"
-                        left={<Ionicons name="lock-closed-outline" size={22} color={theme.colors.textMuted} />}
-                        right={<Badge label="Pro" tone="accent" />}
+                        checked={isChecked}
+                        onPress={() => toggleHabit(habit.id)}
+                        titleColor={isChecked ? 'textMuted' : 'text'}
+                        titleStyle={{ opacity: isChecked ? 0.6 : 1 }}
+                        left={
+                          <Ionicons
+                            name={isChecked ? 'checkmark-circle' : 'ellipse-outline'}
+                            size={22}
+                            color={isChecked ? theme.colors.success : theme.colors.textMuted}
+                          />
+                        }
+                        right={null}
                       />
                     );
-                  }
-
-                  return (
-                    <ListRow
-                      key={habit.id}
-                      testID={`habit-${habit.id}`}
-                      title={habit.title}
-                      divider={i < habits.length - 1}
-                      checked={isChecked}
-                      onPress={() => toggleHabit(habit.id)}
-                      titleColor={isChecked ? 'textMuted' : 'text'}
-                      titleStyle={{ opacity: isChecked ? 0.6 : 1 }}
-                      left={
-                        <Ionicons
-                          name={isChecked ? 'checkmark-circle' : 'ellipse-outline'}
-                          size={22}
-                          color={isChecked ? theme.colors.success : theme.colors.textMuted}
-                        />
-                      }
-                      right={null}
-                    />
-                  );
-                })}
+                  })
+                )}
               </View>
             </Card>
           );
         })}
       </View>
+
+      <Sheet
+        visible={comebackPromptDue}
+        onClose={dismissComebackPrompt}
+        title={COMEBACK_PROMPT.title}
+        testID="home-comeback-sheet"
+      >
+        <Text variant="body" color="textMuted">
+          {COMEBACK_PROMPT.message}
+        </Text>
+
+        <View
+          style={{
+            marginTop: theme.spacing.xl,
+            borderRadius: theme.radius.lg,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceAlt,
+            overflow: 'hidden',
+          }}
+        >
+          {comebackOptions.map((habit, i) => (
+            <ListRow
+              key={habit.id}
+              testID={`home-comeback-habit-${habit.id}`}
+              title={habit.title}
+              divider={i < comebackOptions.length - 1}
+              onPress={() => restartWithHabit(habit.id)}
+              left={<Ionicons name={habit.icon} size={20} color={theme.colors.primary} />}
+            />
+          ))}
+        </View>
+
+        <Pressable
+          testID="home-comeback-skip"
+          accessibilityRole="button"
+          onPress={dismissComebackPrompt}
+          hitSlop={12}
+          style={{ marginTop: theme.spacing.lg, alignSelf: 'center' }}
+        >
+          <Text variant="caption" color="textMuted">
+            {COMEBACK_PROMPT.skip}
+          </Text>
+        </Pressable>
+      </Sheet>
     </Screen>
   );
 }

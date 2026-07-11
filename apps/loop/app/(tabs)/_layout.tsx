@@ -1,7 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 
 import { useTheme } from '@/hooks/useTheme';
+
+// The paywall opens as a modal pushed onto the root Stack, above the tab
+// navigator. Without this, tapping a different tab switches the tab bar's
+// active route underneath the modal but leaves the modal itself on screen —
+// so e.g. Settings becomes unreachable once the paywall has been triggered
+// from Reflect. Every tab press dismisses any modal on top of the stack
+// first, so the tab bar always actually navigates.
+function dismissModalsOnTabPress() {
+  if (router.canDismiss()) {
+    router.dismissAll();
+  }
+}
 
 export default function TabsLayout() {
   const theme = useTheme();
@@ -20,6 +32,9 @@ export default function TabsLayout() {
           fontFamily: theme.fonts.bodySemiBold,
           fontSize: 11,
         },
+      }}
+      screenListeners={{
+        tabPress: dismissModalsOnTabPress,
       }}
     >
       <Tabs.Screen

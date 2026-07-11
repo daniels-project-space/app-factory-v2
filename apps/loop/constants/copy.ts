@@ -27,6 +27,20 @@ export const REASSURANCE_COPY = {
  */
 export const FLAME_DIMMED_MESSAGE = 'Your flame dimmed a little — one small thing brings it back.';
 
+/**
+ * The comeback prompt — a one-time Sheet after 3+ consecutive fully-missed
+ * days (a genuinely bad week, not just a slipped day). Same off-ramp tone as
+ * the dimmed-flame banner: an invitation back in, never a scolding for the
+ * gap. Offers to restart with a single tiny habit rather than the full
+ * three-anchor routine, so the re-entry bar stays low.
+ */
+export const COMEBACK_PROMPT = {
+  title: 'The ember is still here.',
+  message:
+    'A few days got away from you. That happens — the flame just waits, smaller but lit. Pick one tiny thing to bring it back.',
+  skip: 'Not today',
+} as const;
+
 /** "How the flame works" explainer sheet, opened from Settings → The Flame. */
 export const FLAME_EXPLAINER = {
   title: 'How the flame works',

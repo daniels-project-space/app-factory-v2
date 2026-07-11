@@ -33,12 +33,20 @@ export interface HabitsState {
    *  surface the off-ramp message in the UI itself (not just a
    *  notification). Cleared by `acknowledgeFlameDimmed`. */
   flameJustDimmed: boolean;
+  /** True right after `reconcile()` finds 3+ *consecutive* fully missed days
+   *  — a genuinely bad week, distinct from the single-day dimmed banner.
+   *  Drives the one-time comeback Sheet on Home. Cleared by
+   *  `dismissComebackPrompt`. Not persisted: it's re-derived from the gap
+   *  detected on the reconcile that found it, and reconcile only ever runs
+   *  once per calendar-day transition, so it naturally fires once per gap. */
+  comebackPromptDue: boolean;
   toggleHabit: (habitId: string) => void;
   /** Onboarding writes the user's exactly-three picks here. */
   setHabitSelection: (picks: Record<AnchorKey, string[]>) => void;
   setAnchorTime: (anchor: AnchorKey, time: string) => void;
   setHasHydrated: (value: boolean) => void;
   acknowledgeFlameDimmed: () => void;
+  dismissComebackPrompt: () => void;
   /** Compares `lastActiveDate` to today and dims the flame for any fully
    *  missed day in between. Call once per app open, after hydration.
    *  Returns the number of fully missed days found. */
@@ -70,6 +78,10 @@ export function isAnchorComplete(habitIds: string[], record: Record<string, bool
 
 /** How much one completed (or un-completed) anchor moves the flame. */
 const ANCHOR_HEAT_NOTCH = 0.12;
+
+/** Consecutive fully-missed days that qualify as "a bad week" and trigger
+ *  the comeback Sheet, rather than just the single-day dimmed banner. */
+const COMEBACK_MISSED_DAYS_THRESHOLD = 3;
 
 // Demo-mode seed: a returning user partway through the current week,
 // matching the example copy in DESIGN.md §7 ("Twelve days. The room is
@@ -135,6 +147,7 @@ export const useHabits = createPersistedStore<HabitsState, PersistedHabits>(
     hasHydrated: false,
     anchorCompletionEvents: 0,
     flameJustDimmed: false,
+    comebackPromptDue: false,
 
     toggleHabit: (habitId) =>
       set((state) => {
@@ -185,6 +198,8 @@ export const useHabits = createPersistedStore<HabitsState, PersistedHabits>(
 
     acknowledgeFlameDimmed: () => set({ flameJustDimmed: false }),
 
+    dismissComebackPrompt: () => set({ comebackPromptDue: false }),
+
     reconcile: () => {
       const state = get();
       const today = todayKey();
@@ -206,6 +221,7 @@ export const useHabits = createPersistedStore<HabitsState, PersistedHabits>(
         lastActiveDate: result.reconciledDate,
         streak: yesterdayFullyKept ? state.streak + 1 : 0,
         flameJustDimmed: result.missedDays > 0,
+        comebackPromptDue: result.missedDays >= COMEBACK_MISSED_DAYS_THRESHOLD,
       });
 
       return result.missedDays;

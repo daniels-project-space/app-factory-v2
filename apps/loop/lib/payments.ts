@@ -44,6 +44,13 @@ export interface PaywallProvider {
 const DEMO_STORAGE_KEY = 'payments:demo:status';
 const DEMO_CHECKOUT_MS = 1200;
 
+// A real card network/App Store checkout fails or gets cancelled some
+// fraction of the time — the demo lane simulates that instead of always
+// succeeding, so the paywall's non-blocking error state (see
+// PAYWALL_COPY.error) is actually reachable rather than dead code. A real
+// provider lane's `purchase()` would reject from the SDK itself instead.
+const DEMO_FAILURE_RATE = 0.15;
+
 const FREE_STATUS: PaywallStatus = { isPro: false, plan: null };
 
 function delay(ms: number): Promise<void> {
@@ -75,6 +82,9 @@ const demoProvider: PaywallProvider = {
   async purchase(plan: Plan): Promise<PaywallStatus> {
     // Fake checkout: the caller shows its processing state for this window.
     await delay(DEMO_CHECKOUT_MS);
+    if (Math.random() < DEMO_FAILURE_RATE) {
+      throw new Error('Purchase failed or was cancelled');
+    }
     const status: PaywallStatus = { isPro: true, plan };
     await writePersistedStatus(status);
     return status;

@@ -36,7 +36,12 @@ interface PersistedSettings {
 export const useSettings = createPersistedStore<SettingsState, PersistedSettings>(
   'settings',
   (set) => ({
-    themeOverride: 'system',
+    // Loop is designed dark-first ("dark hearth" — see DESIGN.md §1): the
+    // ember only really glows against the near-black surface, so cold start
+    // defaults to dark regardless of OS/browser color-scheme detection.
+    // Light ("hearth at dawn") is still a first-class, one-tap-away choice
+    // from Settings → Appearance.
+    themeOverride: 'dark',
     onboardingCompleted: false,
     notificationsEnabled: true,
     reflectionSeen: false,

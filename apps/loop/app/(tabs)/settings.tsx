@@ -1,13 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Platform, ScrollView, Switch, View } from 'react-native';
 
 import { Badge, Card, ListRow, Screen, Sheet, Text } from '@/components/ui';
 import { ANCHORS, ANCHOR_ORDER, TIME_PRESETS, type AnchorKey } from '@/constants/anchors';
 import { FLAME_EXPLAINER, LEGAL_COPY } from '@/constants/copy';
 import { useTheme } from '@/hooks/useTheme';
+import {
+  getNotificationPermissionStatus,
+  openSystemNotificationSettings,
+  requestNotificationPermission,
+  type NotificationPermissionStatus,
+} from '@/lib/notifications';
 import { useHabits } from '@/store/habits';
 import { useSettings, type ThemeOverride } from '@/store/settings';
 import { useSubscription } from '@/store/subscription';
@@ -31,8 +37,29 @@ export default function SettingsScreen() {
   const setAnchorTime = useHabits((s) => s.setAnchorTime);
   const { isPro, plan } = useSubscription();
   const [openSheet, setOpenSheet] = useState<SheetKind>(null);
+  const [osPermission, setOsPermission] = useState<NotificationPermissionStatus>('undetermined');
 
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+
+  // Refresh on every focus, not just mount — the user's most likely path to
+  // re-enabling is leaving for the system Settings app and coming back.
+  useFocusEffect(
+    useCallback(() => {
+      void getNotificationPermissionStatus().then(setOsPermission);
+    }, []),
+  );
+
+  const notificationsBlockedByOs = Platform.OS !== 'web' && osPermission === 'denied';
+
+  const onToggleNotifications = async (value: boolean) => {
+    if (value) {
+      const granted = await requestNotificationPermission();
+      setOsPermission(granted ? 'granted' : 'denied');
+      setNotificationsEnabled(granted);
+      return;
+    }
+    setNotificationsEnabled(false);
+  };
 
   const cycleAnchorTime = (anchor: AnchorKey) => {
     const options = TIME_PRESETS[anchor];
@@ -97,25 +124,40 @@ export default function SettingsScreen() {
             }
           />
         ))}
-        <ListRow
-          testID="settings-notifications-toggle"
-          title="Notifications"
-          subtitle={
-            Platform.OS === 'web'
-              ? 'Not available on web — use the app on your phone'
-              : 'Nudges at each anchor window, in-voice'
-          }
-          right={
-            <Switch
-              testID="settings-notifications-switch"
-              value={Platform.OS === 'web' ? false : notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              disabled={Platform.OS === 'web'}
-              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-              thumbColor={theme.colors.onPrimary}
-            />
-          }
-        />
+        {notificationsBlockedByOs ? (
+          <ListRow
+            testID="settings-notifications-off"
+            title="Notifications are off"
+            subtitle="Turned off in your phone's settings — turn them back on to get anchor nudges."
+            onPress={() => void openSystemNotificationSettings()}
+            left={<Ionicons name="notifications-off-outline" size={20} color={theme.colors.textMuted} />}
+            right={
+              <Text variant="caption" color="primary">
+                Enable
+              </Text>
+            }
+          />
+        ) : (
+          <ListRow
+            testID="settings-notifications-toggle"
+            title="Notifications"
+            subtitle={
+              Platform.OS === 'web'
+                ? 'Not available on web — use the app on your phone'
+                : 'Nudges at each anchor window, in-voice'
+            }
+            right={
+              <Switch
+                testID="settings-notifications-switch"
+                value={Platform.OS === 'web' ? false : notificationsEnabled}
+                onValueChange={(value) => void onToggleNotifications(value)}
+                disabled={Platform.OS === 'web'}
+                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                thumbColor={theme.colors.onPrimary}
+              />
+            }
+          />
+        )}
       </Card>
 
       <Text variant="caption" color="textMuted" style={{ marginTop: theme.spacing.xl }}>
