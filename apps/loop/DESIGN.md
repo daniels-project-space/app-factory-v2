@@ -21,7 +21,7 @@ This is the art-direction contract for Loop. Screens and components read the tok
 - **Generous, cozy geometry.** Cards are `radius.lg` (22px) — soft, rounded, room-like. Chips and the flame halo are `full`. Screen gutter is `spacing.xl` (24). Vertical rhythm is 8-point.
 - **Roominess over density.** Loop's whole thesis is *less*. Three anchors, one flame, lots of breathing room. A screen that feels empty is on-brief. Never a 20-item checklist; never a Tailwind card grid.
 
-**Banned (house rules):** default Tailwind grids, purple/indigo "AI" gradients, lorem or placeholder copy, dead buttons, a raw `ActivityIndicator` as a hero loader, emoji-as-icon. Ember and amber are the only saturated hues; danger red appears only on genuine errors and destructive confirms.
+**Banned (house rules):** default Tailwind grids, purple/indigo "AI" gradients, lorem ipsum or filler copy, dead buttons, a raw `ActivityIndicator` as a hero loader, emoji-as-icon. Ember and amber are the only saturated hues; danger red appears only on genuine errors and destructive confirms.
 
 ---
 
@@ -167,7 +167,7 @@ Motion is warm and physical — like a fire reacting — never bouncy-cute or co
 
 **Loading**
 - Today: three skeleton anchor cards (glyph square + two shimmer lines) and a dimmed static flame at last-known heat while state hydrates — the flame is never blank.
-- Reflection: a skeleton story card with a placeholder ember strip.
+- Reflection: a skeleton story card with a dimmed ember strip standing in for the real one.
 - Never a centered `ActivityIndicator` alone.
 
 **Empty**

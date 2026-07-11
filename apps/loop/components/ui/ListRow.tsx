@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
-import { Pressable, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet, type StyleProp, type TextStyle } from 'react-native';
 
-import { Text } from '@/components/ui/Text';
+import { Text, type TextProps } from '@/components/ui/Text';
 import { useTheme } from '@/hooks/useTheme';
 
 export interface ListRowProps {
@@ -15,6 +15,14 @@ export interface ListRowProps {
   onPress?: () => void;
   /** Draw a hairline under the row (for stacked lists). */
   divider?: boolean;
+  /** Override the title's semantic color, e.g. to mute a "kept" habit. */
+  titleColor?: TextProps['color'];
+  /** Extra style merged onto the title, e.g. to soften opacity when kept. */
+  titleStyle?: StyleProp<TextStyle>;
+  /** Dims the row and blocks presses, e.g. at a selection cap. */
+  disabled?: boolean;
+  /** Marks the row as toggled-on for accessibility (checkboxes, pickers). */
+  checked?: boolean;
   testID?: string;
 }
 
@@ -25,6 +33,10 @@ export function ListRow({
   right,
   onPress,
   divider = false,
+  titleColor = 'text',
+  titleStyle,
+  disabled = false,
+  checked,
   testID,
 }: ListRowProps) {
   const theme = useTheme();
@@ -40,7 +52,9 @@ export function ListRow({
     <>
       {left ? <View style={{ marginRight: theme.spacing.md }}>{left}</View> : null}
       <View style={styles.textBlock}>
-        <Text variant="body">{title}</Text>
+        <Text variant="body" color={titleColor} style={titleStyle}>
+          {title}
+        </Text>
         {subtitle ? (
           <Text variant="caption" color="textMuted" style={{ marginTop: 2 }}>
             {subtitle}
@@ -63,8 +77,13 @@ export function ListRow({
       <Pressable
         testID={testID}
         accessibilityRole="button"
-        onPress={onPress}
-        style={({ pressed }) => [styles.row, rowStyle, { opacity: pressed ? 0.8 : 1 }]}
+        accessibilityState={{ disabled, checked }}
+        onPress={disabled ? undefined : onPress}
+        style={({ pressed }) => [
+          styles.row,
+          rowStyle,
+          { opacity: disabled ? 0.4 : pressed ? 0.8 : 1 },
+        ]}
       >
         {content}
       </Pressable>

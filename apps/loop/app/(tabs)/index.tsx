@@ -1,155 +1,154 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import {
-  Badge,
-  Card,
-  EmptyState,
-  ListRow,
-  ProgressRing,
-  Screen,
-  Sheet,
-  Text,
-} from '@/components/ui';
+import { Flame } from '@/components/Flame';
+import { Badge, Card, ListRow, ProgressRing, Screen, Text } from '@/components/ui';
+import { ANCHORS, ANCHOR_ORDER, HABIT_BY_ID, anchorForHour, type AnchorKey } from '@/constants/anchors';
 import { useTheme } from '@/hooks/useTheme';
-import { DEMO_MODE, seedOnce } from '@/lib/demo';
+import { useHabits } from '@/store/habits';
 import { useSubscription } from '@/store/subscription';
 
-interface ActivityItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  minutes: number;
-}
+const GREETINGS: Record<AnchorKey, string> = {
+  morning: 'Morning, Maya.',
+  midday: 'Midday.',
+  evening: 'Winding down.',
+};
 
-// Realistic fixture data — replaced by real app data by the factory builder.
-function buildDemoActivities(): ActivityItem[] {
-  return [
-    {
-      id: 'a1',
-      title: 'Morning session',
-      subtitle: 'Completed today, 7:40 AM',
-      icon: 'sunny-outline',
-      minutes: 24,
-    },
-    {
-      id: 'a2',
-      title: 'Deep focus block',
-      subtitle: 'Completed yesterday, 2:15 PM',
-      icon: 'timer-outline',
-      minutes: 52,
-    },
-    {
-      id: 'a3',
-      title: 'Evening review',
-      subtitle: 'Completed yesterday, 9:05 PM',
-      icon: 'moon-outline',
-      minutes: 16,
-    },
-  ];
+function reassuranceLine(fraction: number): string {
+  if (fraction >= 1) return 'Roaring. Don’t look down.';
+  if (fraction <= 0) return 'Nothing kept yet. Start with the easy one.';
+  return 'Small fire, real fire.';
 }
 
 export default function HomeScreen() {
   const theme = useTheme();
   const isPro = useSubscription((s) => s.isPro);
-  const [items, setItems] = useState<ActivityItem[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<ActivityItem | null>(null);
+  const anchorHabits = useHabits((s) => s.anchorHabits);
+  const anchorTimes = useHabits((s) => s.anchorTimes);
+  const completed = useHabits((s) => s.completed);
+  const streak = useHabits((s) => s.streak);
+  const toggleHabit = useHabits((s) => s.toggleHabit);
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      const seeded = DEMO_MODE
-        ? await seedOnce('activities', buildDemoActivities)
-        : [];
-      if (!cancelled) {
-        setItems(seeded);
-        setLoaded(true);
-      }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const now = useMemo(() => new Date(), []);
+  const activeAnchor = anchorForHour(now.getHours());
+  const dateLabel = useMemo(
+    () =>
+      `${now.toLocaleDateString('en-US', { weekday: 'long' })} · ${now.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      })}`,
+    [now],
+  );
 
-  const totalMinutes = items.reduce((sum, item) => sum + item.minutes, 0);
-  const dailyGoalMinutes = 60;
-  const progress = Math.min(1, totalMinutes / (dailyGoalMinutes * 2));
+  const allHabitIds = ANCHOR_ORDER.flatMap((key) => anchorHabits[key]);
+  const keptToday = allHabitIds.filter((id) => completed[id]).length;
+  const todayFraction = allHabitIds.length > 0 ? keptToday / allHabitIds.length : 0;
+  const heat = Math.min(1, Math.max(0.12, streak / 16 + todayFraction * 0.15));
 
   return (
     <Screen scroll testID="home-screen">
       <View style={[styles.headerRow, { marginTop: theme.spacing.lg }]}>
         <View>
           <Text variant="caption" color="textMuted">
-            Welcome back
+            {dateLabel}
           </Text>
-          <Text variant="display">Today</Text>
+          <Text variant="display">{GREETINGS[activeAnchor]}</Text>
         </View>
         <Badge label={isPro ? 'Pro' : 'Free'} tone={isPro ? 'accent' : 'neutral'} />
       </View>
 
-      <Card style={{ marginTop: theme.spacing.xl }}>
-        <View style={styles.progressRow}>
-          <ProgressRing progress={progress} size={104} testID="home-progress-ring">
-            <Text variant="title">{Math.round(progress * 100)}%</Text>
-          </ProgressRing>
-          <View style={{ flex: 1, marginLeft: theme.spacing.xl }}>
-            <Text variant="title">Weekly goal</Text>
-            <Text variant="body" color="textMuted" style={{ marginTop: 4 }}>
-              {totalMinutes} of {dailyGoalMinutes * 2} minutes logged this week.
-            </Text>
-          </View>
-        </View>
+      <Card style={{ marginTop: theme.spacing.xl, alignItems: 'center' }} testID="home-flame-card">
+        <Flame heat={heat} size={140} testID="home-flame" />
+        <Text variant="display" color="accent" style={{ marginTop: theme.spacing.sm }}>
+          {streak}
+        </Text>
+        <Text variant="caption" color="textMuted">
+          day streak
+        </Text>
+        <Text variant="body" color="textMuted" center style={{ marginTop: theme.spacing.sm }}>
+          {reassuranceLine(todayFraction)}
+        </Text>
       </Card>
 
-      <Text variant="title" style={{ marginTop: theme.spacing.xxl }}>
-        Recent activity
-      </Text>
+      <View style={{ marginTop: theme.spacing.xxl, gap: theme.spacing.lg }}>
+        {ANCHOR_ORDER.map((key) => {
+          const anchor = ANCHORS[key];
+          const habitIds = anchorHabits[key];
+          const habits = habitIds.map((id) => HABIT_BY_ID[id]).filter((h): h is NonNullable<typeof h> => !!h);
+          const anchorKept = habits.filter((h) => completed[h.id]).length;
+          const isActive = key === activeAnchor;
 
-      {loaded && items.length === 0 ? (
-        <EmptyState
-          testID="home-empty"
-          icon="leaf-outline"
-          title="Nothing here yet"
-          message="Your sessions will show up here as soon as you log the first one."
-        />
-      ) : (
-        <Card unpadded style={{ marginTop: theme.spacing.md }}>
-          {items.map((item, i) => (
-            <ListRow
-              key={item.id}
-              testID={`home-activity-${item.id}`}
-              title={item.title}
-              subtitle={item.subtitle}
-              divider={i < items.length - 1}
-              left={<Ionicons name={item.icon} size={22} color={theme.colors.primary} />}
-              right={
-                <Text variant="caption" color="textMuted">
-                  {item.minutes} min
-                </Text>
-              }
-              onPress={() => setSelectedItem(item)}
-            />
-          ))}
-        </Card>
-      )}
+          return (
+            <Card
+              key={key}
+              testID={`anchor-${key}`}
+              unpadded
+              style={{
+                borderWidth: isActive ? 1.5 : 1,
+                borderColor: isActive ? theme.colors.primary : theme.colors.border,
+              }}
+            >
+              <View style={[styles.anchorHeader, { padding: theme.spacing.lg }]}>
+                <View
+                  style={[
+                    styles.glyphWrap,
+                    {
+                      backgroundColor: theme.colors.surfaceAlt,
+                      borderRadius: theme.radius.md,
+                      marginRight: theme.spacing.md,
+                    },
+                  ]}
+                >
+                  <Ionicons name={anchor.glyph} size={22} color={theme.colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="title">{anchor.label}</Text>
+                  <Text variant="caption" color="textMuted">
+                    {anchorTimes[key]}
+                  </Text>
+                </View>
+                <ProgressRing
+                  progress={habits.length > 0 ? anchorKept / habits.length : 0}
+                  size={40}
+                  strokeWidth={4}
+                  testID={`anchor-${key}-ring`}
+                >
+                  <Text variant="caption" color="textMuted">
+                    {anchorKept}/{habits.length}
+                  </Text>
+                </ProgressRing>
+              </View>
 
-      <Sheet
-        visible={selectedItem !== null}
-        onClose={() => setSelectedItem(null)}
-        title={selectedItem?.title ?? ''}
-        testID="home-activity-sheet"
-      >
-        <Text variant="body" color="textMuted">
-          {selectedItem?.subtitle}
-        </Text>
-        <Text variant="body" style={{ marginTop: theme.spacing.md }}>
-          Duration: {selectedItem?.minutes} minutes
-        </Text>
-      </Sheet>
+              <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+                {habits.map((habit, i) => {
+                  const isChecked = !!completed[habit.id];
+                  return (
+                    <ListRow
+                      key={habit.id}
+                      testID={`habit-${habit.id}`}
+                      title={habit.title}
+                      divider={i < habits.length - 1}
+                      checked={isChecked}
+                      onPress={() => toggleHabit(habit.id)}
+                      titleColor={isChecked ? 'textMuted' : 'text'}
+                      titleStyle={{ opacity: isChecked ? 0.6 : 1 }}
+                      left={
+                        <Ionicons
+                          name={isChecked ? 'checkmark-circle' : 'ellipse-outline'}
+                          size={22}
+                          color={isChecked ? theme.colors.success : theme.colors.textMuted}
+                        />
+                      }
+                      right={null}
+                    />
+                  );
+                })}
+              </View>
+            </Card>
+          );
+        })}
+      </View>
     </Screen>
   );
 }
@@ -160,8 +159,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
   },
-  progressRow: {
+  anchorHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  glyphWrap: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -33,6 +33,16 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="reflect"
+        options={{
+          title: 'Reflect',
+          tabBarButtonTestID: 'tab-reflect',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'flame' : 'flame-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

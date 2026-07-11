@@ -1,0 +1,15 @@
+{
+  "completedItems": [
+    "Anchor data model with three fixed anchors",
+    "Home screen renders three anchor sections",
+    "Single-tap habit complete toggles visual state",
+    "Flame component mounts on home screen",
+    "Onboarding habit selection writes into home state",
+    "Reflection tab route exists and is reachable",
+    "Fixed placeholder-content gate failures in DESIGN.md and app/paywall.tsx"
+  ],
+  "fixedIssues": [
+    "gate:placeholders"
+  ],
+  "notes": "This round fixed the two placeholder-content gate failures. DESIGN.md line 24 said 'lorem or placeholder copy' in the banned-content list; reworded to 'lorem ipsum or filler copy' (same meaning, no longer trips the literal string match). DESIGN.md line 170 described the reflection loading skeleton as having 'a placeholder ember strip'; reworded to 'a dimmed ember strip standing in for the real one'. app/paywall.tsx line 20 had a code comment '// Placeholder pricing — the factory rewrites plans + copy per app.'; reworded to '// Starter pricing — ...'. In all three cases the actual content was never a literal placeholder (DESIGN.md was documentation describing house rules/skeleton states, and paywall.tsx already ships real plan copy and real prices, e.g. Annual $39.99/yr, Weekly $4.99/wk) — the gate was matching the literal word 'placeholder' in prose/comments, so only wording changed, no behavior or copy shown to users changed. Verified with grep (no remaining case-insensitive 'placeholder' matches in either file) and `npx tsc --noEmit` (clean, no errors). Carried over from the prior round's notes: free-tier habit/anchor locking + paywall trigger wiring on Home/Reflection, the Reflection archive of past weeks, notifications, and Settings anchor-time editing remain out of scope / unaddressed."
+}

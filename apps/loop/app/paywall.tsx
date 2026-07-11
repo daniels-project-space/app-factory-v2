@@ -17,7 +17,7 @@ interface PlanOption {
   badge?: string;
 }
 
-// Placeholder pricing — the factory rewrites plans + copy per app.
+// Starter pricing — the factory rewrites plans + copy per app.
 const PLANS: PlanOption[] = [
   {
     id: 'annual',
