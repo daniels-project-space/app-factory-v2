@@ -11,7 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { useTheme } from '@/hooks/useTheme';
-import { scheduleAnchorNotifications, scheduleReengagementNudge } from '@/lib/notifications';
+import { cancelAnchorNotifications, scheduleAnchorNotifications, scheduleReengagementNudge } from '@/lib/notifications';
 import { useHabits } from '@/store/habits';
 import { useSettings } from '@/store/settings';
 import { useSubscription } from '@/store/subscription';
@@ -36,6 +36,7 @@ export default function RootLayout() {
   const habitsHydrated = useHabits((s) => s.hasHydrated);
   const reconcileStreak = useHabits((s) => s.reconcile);
   const anchorTimes = useHabits((s) => s.anchorTimes);
+  const notificationsEnabled = useSettings((s) => s.notificationsEnabled);
 
   useEffect(() => {
     void hydrateSubscription();
@@ -54,12 +55,16 @@ export default function RootLayout() {
   }, [habitsHydrated, reconcileStreak]);
 
   // Keeps the three anchor-time notifications in sync with the current
-  // windows across app restarts (native only — no-ops on web).
+  // windows (and the Settings toggle) across app restarts — native only,
+  // no-ops on web.
   useEffect(() => {
-    if (habitsHydrated && onboardingCompleted) {
+    if (!habitsHydrated || !onboardingCompleted) return;
+    if (notificationsEnabled) {
       void scheduleAnchorNotifications(anchorTimes);
+    } else {
+      void cancelAnchorNotifications();
     }
-  }, [habitsHydrated, onboardingCompleted, anchorTimes]);
+  }, [habitsHydrated, onboardingCompleted, anchorTimes, notificationsEnabled]);
 
   const ready = (fontsLoaded || fontError !== null) && settingsHydrated && habitsHydrated;
 

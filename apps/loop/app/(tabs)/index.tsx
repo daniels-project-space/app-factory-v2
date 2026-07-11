@@ -1,14 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { useEffect, useMemo } from 'react';
+import { Pressable, View, StyleSheet } from 'react-native';
 
 import { Flame } from '@/components/Flame';
 import { Badge, Card, ListRow, ProgressRing, Screen, Text } from '@/components/ui';
 import { ANCHORS, ANCHOR_ORDER, HABIT_BY_ID, anchorForHour, type AnchorKey } from '@/constants/anchors';
+import { FLAME_DIMMED_MESSAGE, REASSURANCE_COPY } from '@/constants/copy';
 import { useTheme } from '@/hooks/useTheme';
 import { todayKey } from '@/lib/date';
 import { isAnchorComplete, useHabits } from '@/store/habits';
+import { useSettings } from '@/store/settings';
 import { useSubscription } from '@/store/subscription';
 
 const GREETINGS: Record<AnchorKey, string> = {
@@ -18,16 +20,24 @@ const GREETINGS: Record<AnchorKey, string> = {
 };
 
 // Free tier: exactly one anchor accepts habits, capped at two habits in it —
-// the paywall trigger everything else routes to. See DESIGN.md §3.2.
-const FREE_ANCHOR: AnchorKey = ANCHOR_ORDER[0]!;
+// the paywall trigger everything else routes to. See DESIGN.md §3.2. Which
+// anchor is "the" free one is picked dynamically (the first, in anchor
+// order, that actually has habits assigned) because onboarding lets the
+// user's three picks land on any anchor — a hardcoded morning-only free
+// anchor could leave a free user with zero completable habits if they
+// picked all three into midday/evening.
 const FREE_HABIT_LIMIT = 2;
 
+// The number of anchor-complete events (cumulative this session) that opens
+// the hard paywall automatically — see DESIGN.md pricing and roadmap item 1.
+const HARD_PAYWALL_ANCHOR_THRESHOLD = 3;
+
 function reassuranceLine(fraction: number, streak: number): string {
-  if (fraction >= 1) return streak >= 10 ? 'Roaring. Don’t look down.' : 'Small fire, real fire.';
+  if (fraction >= 1) return streak >= 10 ? REASSURANCE_COPY.roaringLong : REASSURANCE_COPY.roaringShort;
   if (fraction <= 0) {
-    return streak === 0 ? 'Day one. This is the hard part — you’re past it.' : 'Nothing kept yet. Start with the easy one.';
+    return streak === 0 ? REASSURANCE_COPY.fresh : REASSURANCE_COPY.emptyToday;
   }
-  return 'A little smaller today. It comes back.';
+  return REASSURANCE_COPY.slipped;
 }
 
 export default function HomeScreen() {
@@ -40,6 +50,25 @@ export default function HomeScreen() {
   const flameHeat = useHabits((s) => s.flameHeat);
   const streak = useHabits((s) => s.streak);
   const toggleHabit = useHabits((s) => s.toggleHabit);
+  const anchorCompletionEvents = useHabits((s) => s.anchorCompletionEvents);
+  const flameJustDimmed = useHabits((s) => s.flameJustDimmed);
+  const acknowledgeFlameDimmed = useHabits((s) => s.acknowledgeFlameDimmed);
+  const hardPaywallTriggered = useSettings((s) => s.hardPaywallTriggered);
+  const markHardPaywallTriggered = useSettings((s) => s.markHardPaywallTriggered);
+
+  const freeAnchor: AnchorKey =
+    ANCHOR_ORDER.find((key) => anchorHabits[key].length > 0) ?? ANCHOR_ORDER[0]!;
+
+  // Hard-paywall trigger: the 3rd anchor-complete event this session, for a
+  // free user, pushes the paywall automatically. Fires once — the shared
+  // `hardPaywallTriggered` flag also guards the first-reflection-open
+  // trigger on the Reflect tab, so whichever condition is met first wins.
+  useEffect(() => {
+    if (!isPro && !hardPaywallTriggered && anchorCompletionEvents >= HARD_PAYWALL_ANCHOR_THRESHOLD) {
+      markHardPaywallTriggered();
+      router.push('/paywall');
+    }
+  }, [anchorCompletionEvents, isPro, hardPaywallTriggered, markHardPaywallTriggered, router]);
 
   const now = useMemo(() => new Date(), []);
   const activeAnchor = anchorForHour(now.getHours());
@@ -86,6 +115,37 @@ export default function HomeScreen() {
         </Text>
       </Card>
 
+      {flameJustDimmed ? (
+        <View
+          testID="home-flame-dimmed-banner"
+          style={[
+            styles.dimmedBanner,
+            {
+              marginTop: theme.spacing.lg,
+              backgroundColor: theme.colors.surfaceAlt,
+              borderRadius: theme.radius.md,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              padding: theme.spacing.md,
+            },
+          ]}
+        >
+          <Ionicons name="flame-outline" size={18} color={theme.colors.accent} />
+          <Text variant="caption" color="textMuted" style={{ flex: 1, marginLeft: theme.spacing.sm }}>
+            {FLAME_DIMMED_MESSAGE}
+          </Text>
+          <Pressable
+            testID="home-flame-dimmed-dismiss"
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+            onPress={acknowledgeFlameDimmed}
+            hitSlop={8}
+          >
+            <Ionicons name="close" size={16} color={theme.colors.textMuted} />
+          </Pressable>
+        </View>
+      ) : null}
+
       <View style={{ marginTop: theme.spacing.xxl, gap: theme.spacing.lg }}>
         {ANCHOR_ORDER.map((key) => {
           const anchor = ANCHORS[key];
@@ -97,8 +157,8 @@ export default function HomeScreen() {
           const isActive = key === activeAnchor;
           const anchorComplete = isAnchorComplete(habitIds, completed);
 
-          // Free tier: only the first anchor accepts habits at all.
-          const anchorLocked = !isPro && key !== FREE_ANCHOR;
+          // Free tier: only the free anchor accepts habits at all.
+          const anchorLocked = !isPro && key !== freeAnchor;
 
           return (
             <Card
@@ -219,6 +279,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
+  },
+  dimmedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   anchorHeader: {
     flexDirection: 'row',

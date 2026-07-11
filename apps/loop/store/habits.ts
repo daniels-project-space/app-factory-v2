@@ -25,11 +25,20 @@ export interface HabitsState {
   lastActiveDate: string;
   /** True once the persisted state has been loaded from AsyncStorage. */
   hasHydrated: boolean;
+  /** Count of anchor-complete transitions this app session (not persisted —
+   *  starts fresh each launch). Drives the "3rd anchor completion" hard
+   *  paywall trigger; see app/(tabs)/index.tsx. */
+  anchorCompletionEvents: number;
+  /** True right after `reconcile()` finds a fully missed day, so Home can
+   *  surface the off-ramp message in the UI itself (not just a
+   *  notification). Cleared by `acknowledgeFlameDimmed`. */
+  flameJustDimmed: boolean;
   toggleHabit: (habitId: string) => void;
   /** Onboarding writes the user's exactly-three picks here. */
   setHabitSelection: (picks: Record<AnchorKey, string[]>) => void;
   setAnchorTime: (anchor: AnchorKey, time: string) => void;
   setHasHydrated: (value: boolean) => void;
+  acknowledgeFlameDimmed: () => void;
   /** Compares `lastActiveDate` to today and dims the flame for any fully
    *  missed day in between. Call once per app open, after hydration.
    *  Returns the number of fully missed days found. */
@@ -124,6 +133,8 @@ export const useHabits = createPersistedStore<HabitsState, PersistedHabits>(
     streak: DEMO_STREAK,
     lastActiveDate: todayKey(),
     hasHydrated: false,
+    anchorCompletionEvents: 0,
+    flameJustDimmed: false,
 
     toggleHabit: (habitId) =>
       set((state) => {
@@ -142,8 +153,10 @@ export const useHabits = createPersistedStore<HabitsState, PersistedHabits>(
           : false;
 
         let flameHeat = state.flameHeat;
+        let anchorCompletionEvents = state.anchorCompletionEvents;
         if (!wasAnchorComplete && isNowAnchorComplete) {
           flameHeat = Math.min(1, flameHeat + ANCHOR_HEAT_NOTCH);
+          anchorCompletionEvents += 1;
         } else if (wasAnchorComplete && !isNowAnchorComplete) {
           flameHeat = Math.max(FLAME_FLOOR, flameHeat - ANCHOR_HEAT_NOTCH);
         }
@@ -151,6 +164,7 @@ export const useHabits = createPersistedStore<HabitsState, PersistedHabits>(
         return {
           history: { ...state.history, [today]: todayRecord },
           flameHeat,
+          anchorCompletionEvents,
         };
       }),
 
@@ -168,6 +182,8 @@ export const useHabits = createPersistedStore<HabitsState, PersistedHabits>(
       })),
 
     setHasHydrated: (value) => set({ hasHydrated: value }),
+
+    acknowledgeFlameDimmed: () => set({ flameJustDimmed: false }),
 
     reconcile: () => {
       const state = get();
@@ -189,6 +205,7 @@ export const useHabits = createPersistedStore<HabitsState, PersistedHabits>(
         flameHeat: result.flameHeat,
         lastActiveDate: result.reconciledDate,
         streak: yesterdayFullyKept ? state.streak + 1 : 0,
+        flameJustDimmed: result.missedDays > 0,
       });
 
       return result.missedDays;

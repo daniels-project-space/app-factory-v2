@@ -3,7 +3,9 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, View, StyleSheet } from 'react-native';
 
+import { Flame } from '@/components/Flame';
 import { Badge, Button, Card, Screen, Text } from '@/components/ui';
+import { PAYWALL_COPY, PAYWALL_FEATURES } from '@/constants/copy';
 import { useTheme } from '@/hooks/useTheme';
 import type { Plan } from '@/lib/payments';
 import { useSubscription } from '@/store/subscription';
@@ -17,7 +19,6 @@ interface PlanOption {
   badge?: string;
 }
 
-// Starter pricing — the factory rewrites plans + copy per app.
 const PLANS: PlanOption[] = [
   {
     id: 'annual',
@@ -25,7 +26,7 @@ const PLANS: PlanOption[] = [
     price: '$39.99',
     period: 'per year',
     note: 'About $0.77 a week',
-    badge: 'Best value',
+    badge: 'Save 33%',
   },
   {
     id: 'weekly',
@@ -34,13 +35,6 @@ const PLANS: PlanOption[] = [
     period: 'per week',
     note: 'Cancel anytime',
   },
-];
-
-const FEATURES: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
-  { icon: 'infinite-outline', label: 'Unlimited history and archives' },
-  { icon: 'analytics-outline', label: 'Advanced insights and trends' },
-  { icon: 'cloud-done-outline', label: 'Automatic backup across devices' },
-  { icon: 'flash-outline', label: 'Every future Pro feature, included' },
 ];
 
 export default function PaywallScreen() {
@@ -64,7 +58,7 @@ export default function PaywallScreen() {
   const succeeded = phase === 'success' || isPro;
 
   return (
-    <Screen scroll edges={['top', 'bottom']}>
+    <Screen scroll edges={['top', 'bottom']} testID="paywall-screen">
       <View style={styles.closeRow}>
         <Pressable
           testID="paywall-close"
@@ -82,13 +76,19 @@ export default function PaywallScreen() {
       </View>
 
       {succeeded ? (
-        <View style={[styles.successBlock, { paddingVertical: theme.spacing.xxxl }]}>
-          <Ionicons name="checkmark-circle" size={64} color={theme.colors.accent} />
-          <Text variant="display" center style={{ marginTop: theme.spacing.lg }}>
-            You're all set
+        <View style={[styles.successBlock, { paddingVertical: theme.spacing.xxl }]}>
+          <Flame heat={1} size={120} testID="paywall-flame" />
+          <Ionicons
+            name="checkmark-circle"
+            size={40}
+            color={theme.colors.success}
+            style={{ marginTop: theme.spacing.lg }}
+          />
+          <Text variant="display" center style={{ marginTop: theme.spacing.md }}>
+            {PAYWALL_COPY.successTitle}
           </Text>
           <Text variant="body" color="textMuted" center style={{ marginTop: theme.spacing.sm }}>
-            Pro is active on this device. Enjoy the full experience.
+            {PAYWALL_COPY.successBody}
           </Text>
           <Button
             title="Continue"
@@ -99,15 +99,24 @@ export default function PaywallScreen() {
         </View>
       ) : (
         <>
-          <Text variant="display" style={{ marginTop: theme.spacing.md }}>
-            Unlock Pro
+          <View style={{ alignItems: 'center', marginTop: theme.spacing.sm }}>
+            <Flame heat={0.7} size={104} testID="paywall-flame" />
+          </View>
+
+          <Text variant="display" center style={{ marginTop: theme.spacing.lg }}>
+            {PAYWALL_COPY.hook}
           </Text>
-          <Text variant="body" color="textMuted" style={{ marginTop: theme.spacing.sm }}>
-            One upgrade, everything included.
+          <Text
+            variant="body"
+            color="textMuted"
+            center
+            style={{ marginTop: theme.spacing.sm, alignSelf: 'center', maxWidth: 300 }}
+          >
+            {PAYWALL_COPY.sub}
           </Text>
 
           <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.md }}>
-            {FEATURES.map((feature) => (
+            {PAYWALL_FEATURES.map((feature) => (
               <View key={feature.label} style={styles.featureRow}>
                 <Ionicons name={feature.icon} size={20} color={theme.colors.primary} />
                 <Text variant="body" style={{ marginLeft: theme.spacing.md, flex: 1 }}>
@@ -164,12 +173,12 @@ export default function PaywallScreen() {
 
           {phase === 'error' ? (
             <Text variant="caption" color="danger" center style={{ marginTop: theme.spacing.lg }}>
-              Something went wrong with the purchase. Please try again.
+              {PAYWALL_COPY.error}
             </Text>
           ) : null}
 
           <Button
-            title={processing ? 'Processing…' : 'Continue'}
+            title={PAYWALL_COPY.ctaIdle}
             onPress={() => void purchase(selected)}
             loading={processing}
             testID="paywall-purchase"
@@ -184,7 +193,7 @@ export default function PaywallScreen() {
             hitSlop={12}
           >
             <Text variant="caption" color="textMuted">
-              Restore purchases
+              {PAYWALL_COPY.restore}
             </Text>
           </Pressable>
         </>
