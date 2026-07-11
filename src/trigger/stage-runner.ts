@@ -81,7 +81,9 @@ type Issue = {
 
 export const stageRunner = task({
   id: "stage-runner",
-  machine: "small-2x",
+  // large-1x (4 vCPU / 8GB): npm ci + Metro web export + the claude subprocess
+  // OOM-killed a 1GB machine (silent death, no catch — the exact v1 failure mode).
+  machine: "large-1x",
   maxDuration: 5400,
   queue: { concurrencyLimit: 2 }, // Balanced: never more than 2 Claude sessions
   retry: { maxAttempts: 1 }, // Convex attempts-counter owns retries, not Trigger

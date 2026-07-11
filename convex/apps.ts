@@ -128,7 +128,9 @@ export const claimWork = mutation({
       .unique();
     if (!settings?.running) return [];
 
-    const STALE_MS = 90 * 60 * 1000;
+    // Heartbeats land every 60s while a runner is alive; 20 min of silence
+    // means the container died (e.g. OOM) — reclaim fast, never wedge an app.
+    const STALE_MS = 20 * 60 * 1000;
     const apps = await ctx.db.query("apps").collect();
     const runnable = apps
       .filter(
@@ -171,7 +173,9 @@ export const claimWork = mutation({
 export const runningCount = query({
   args: {},
   handler: async (ctx) => {
-    const STALE_MS = 90 * 60 * 1000;
+    // Heartbeats land every 60s while a runner is alive; 20 min of silence
+    // means the container died (e.g. OOM) — reclaim fast, never wedge an app.
+    const STALE_MS = 20 * 60 * 1000;
     const apps = await ctx.db.query("apps").collect();
     return apps.filter(
       (a) =>
