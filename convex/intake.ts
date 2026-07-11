@@ -311,6 +311,8 @@ export const updateSettings = mutation({
     dailyBudgetUsd: v.optional(v.number()),
     forgeScoutEnabled: v.optional(v.boolean()),
     designSignoffRequired: v.optional(v.boolean()),
+    // accounting corrections only (e.g. estimator bug) — not a control knob
+    spentTodayUsd: v.optional(v.number()),
   },
   handler: async (ctx, patch) => {
     const s = await ctx.db
