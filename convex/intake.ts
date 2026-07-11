@@ -135,7 +135,11 @@ export const decideApproval = mutation({
     if (approve) {
       // Stage-aware advance: ship gate → package; design sign-off → build;
       // anything else just becomes runnable again at its current stage.
-      const nextStageMap: Record<string, string> = { approval: "package", design: "build" };
+      const nextStageMap: Record<string, string> = {
+        approval: "package",
+        design: "build",
+        inception: "roadmap",
+      };
       await ctx.db.patch(approval.appId, {
         stage: (nextStageMap[approval.stage] ?? app.stage) as typeof app.stage,
         stageState: "pending",
