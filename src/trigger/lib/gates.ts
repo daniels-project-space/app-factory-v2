@@ -72,9 +72,11 @@ export async function runGates(dir: string): Promise<GateResult> {
   return { ok: issues.filter((i) => i.severity === "P0").length === 0, issues, exportDir };
 }
 
+// NOTE: the bare word "placeholder" is NOT scanned — it's a legitimate RN
+// TextInput prop. We hunt placeholder CONTENT, plus unrendered scaffold tokens.
 const PLACEHOLDER_RE =
-  /\b(lorem ipsum|john doe|jane doe|foo@example|test@example|your-\w+-here|PLACEHOLDER|sk_test_[A-Za-z0-9]{8})\b/i;
-const SCAN_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".json", ".md"]);
+  /(\blorem\b|john doe|jane doe|foo@example|test@example|your-\w+-here|sk_test_[A-Za-z0-9]{8}|__APP_SLUG__|__APP_NAME__|__BUNDLE_ID__)/i;
+const SCAN_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".json"]);
 
 function scanPlaceholders(root: string): string[] {
   const hits: string[] = [];
