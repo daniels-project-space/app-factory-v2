@@ -5,7 +5,7 @@ import { useTheme } from '@/hooks/useTheme';
 
 export interface BadgeProps {
   label: string;
-  tone?: 'primary' | 'accent' | 'danger' | 'neutral';
+  tone?: 'primary' | 'accent' | 'danger' | 'success' | 'neutral';
   testID?: string;
   style?: StyleProp<ViewStyle>;
 }
@@ -21,7 +21,9 @@ export function Badge({ label, tone = 'neutral', testID, style }: BadgeProps) {
         ? theme.colors.accent
         : tone === 'danger'
           ? theme.colors.danger
-          : theme.colors.textMuted;
+          : tone === 'success'
+            ? theme.colors.success
+            : theme.colors.textMuted;
 
   return (
     <View

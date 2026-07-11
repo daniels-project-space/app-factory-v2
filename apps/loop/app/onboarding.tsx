@@ -12,6 +12,7 @@ import {
   type AnchorKey,
 } from '@/constants/anchors';
 import { useTheme } from '@/hooks/useTheme';
+import { requestNotificationPermission, scheduleAnchorNotifications } from '@/lib/notifications';
 import { useHabits } from '@/store/habits';
 import { useSettings } from '@/store/settings';
 
@@ -74,6 +75,9 @@ export default function OnboardingScreen() {
     setHabitSelection(finalPicks);
     ANCHOR_ORDER.forEach((key) => setAnchorTime(key, finalTimes[key]));
     completeOnboarding();
+    void requestNotificationPermission().then((granted) => {
+      if (granted) void scheduleAnchorNotifications(finalTimes);
+    });
   };
 
   const skip = () => finish(DEFAULT_PICKS, DEFAULT_TIMES);

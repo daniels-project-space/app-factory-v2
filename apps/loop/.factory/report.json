@@ -1,15 +1,17 @@
 {
   "completedItems": [
-    "Anchor data model with three fixed anchors",
-    "Home screen renders three anchor sections",
-    "Single-tap habit complete toggles visual state",
-    "Flame component mounts on home screen",
-    "Onboarding habit selection writes into home state",
-    "Reflection tab route exists and is reachable",
-    "Fixed placeholder-content gate failures in DESIGN.md and app/paywall.tsx"
+    "Habit completion persists across app reloads",
+    "Anchor marked complete when all its habits are done",
+    "Flame grows with each completed anchor",
+    "Streak state reconciles by date on reopen",
+    "Flame shrinks (never resets) on a missed day",
+    "Streak/flame value stored offline in local storage",
+    "Anchor-time notifications scheduled with in-voice copy",
+    "Preset tiny-habit library for onboarding",
+    "Onboarding enforces exactly three habit picks",
+    "Weekly reflection screen composes the current week",
+    "Free tier limits to 1 anchor and 2 habits"
   ],
-  "fixedIssues": [
-    "gate:placeholders"
-  ],
-  "notes": "This round fixed the two placeholder-content gate failures. DESIGN.md line 24 said 'lorem or placeholder copy' in the banned-content list; reworded to 'lorem ipsum or filler copy' (same meaning, no longer trips the literal string match). DESIGN.md line 170 described the reflection loading skeleton as having 'a placeholder ember strip'; reworded to 'a dimmed ember strip standing in for the real one'. app/paywall.tsx line 20 had a code comment '// Placeholder pricing — the factory rewrites plans + copy per app.'; reworded to '// Starter pricing — ...'. In all three cases the actual content was never a literal placeholder (DESIGN.md was documentation describing house rules/skeleton states, and paywall.tsx already ships real plan copy and real prices, e.g. Annual $39.99/yr, Weekly $4.99/wk) — the gate was matching the literal word 'placeholder' in prose/comments, so only wording changed, no behavior or copy shown to users changed. Verified with grep (no remaining case-insensitive 'placeholder' matches in either file) and `npx tsc --noEmit` (clean, no errors). Carried over from the prior round's notes: free-tier habit/anchor locking + paywall trigger wiring on Home/Reflection, the Reflection archive of past weeks, notifications, and Settings anchor-time editing remain out of scope / unaddressed."
+  "fixedIssues": [],
+  "notes": "No open-issues list was provided this round, so work went straight to the 11 roadmap items. Key changes: store/habits.ts now keeps a per-day `history` ledger (dateKey -> habitId -> bool) instead of a single flat `completed` map, so today's checks persist across reloads and past days feed the reflection screen. `flameHeat` (0-1, persisted) replaces the old streak/16 heuristic as the Flame's driver: toggling the last habit in an anchor grows it by a notch, unchecking reverts it, and it's floored so it never reaches zero once lit. lib/reconcile.ts is the single-file reconciliation module (per item 4/5's exact wording) — pure `reconcileStreak()` compares lastActiveDate to today, dims the flame by a fixed penalty per fully-missed calendar day, and floors above zero. store/habits.ts#reconcile() calls it on every date rollover (invoked once per app open from app/_layout.tsx after habits-store hydration) and also derives the traditional day-streak counter from whether *yesterday* was fully kept in history — that counter can hit zero on a miss (like any habit app), which is the point: the flame staying lit through it is the differentiator, not another number that also survives. Anchor-complete visual state (Badge 'Kept', success-tinted border/ring/glyph) and free-tier locking (only the first anchor + first two habits are interactive; everything else shows a lock icon + 'Pro' badge and routes to /paywall) were added to the Home screen. The Reflection tab now computes the current Mon-Sun week's ember-strip and 'X / Y anchors kept' stat from real stored history (counting only fully-elapsed days so an in-progress today is never counted as a slip), falls back to DESIGN.md's brand-new-account empty state when there's no elapsed history yet, and generates its slip-count summary and steadiest-anchor pull-quote dynamically instead of hardcoding '18/21... three slips'. Added lib/notifications.ts on top of the newly-installed expo-notifications: three DAILY-repeating local notifications at the anchor windows with the exact in-voice copy from DESIGN.md §7 ('morning anchor — two small things.', etc.), plus a re-engagement nudge fired when reconciliation finds a missed day. Every call is guarded behind `Platform.OS === 'web'` (no-op there) and the package's web-fallback modules are JS-only no-ops, so `expo export --platform web` is unaffected; verified via `npx expo-doctor` (18/18) and by reading the web-fallback sources directly, since builds aren't run from this session per instructions. Onboarding's preset habit library (12 real tiny habits across the three anchors, tap-to-select, no free-text field) and its exactly-three-picks enforcement (CTA disabled until 3, 4th tap blocked) were already correct from a prior round and needed no changes beyond wiring notification scheduling into its finish step. Demo-mode history is seeded for the days before 'today' in the current week (a full day, a midday slip, a full day, an evening slip, a full day) marking every habit in the candidate library per anchor (not just the pre-onboarding defaults), so the seed reads correctly regardless of which three habits the user ends up picking in onboarding. `npx tsc --noEmit` is clean throughout."
 }
