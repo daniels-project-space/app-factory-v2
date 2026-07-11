@@ -27,10 +27,14 @@ export type ValidationResult = {
   consoleErrorCount: number;
 };
 
-function serveStatic(dir: string): Promise<{ server: Server; port: number }> {
+function serveStatic(dir: string, basePath: string): Promise<{ server: Server; port: number }> {
   return new Promise((resolve) => {
     const server = createServer((req, res) => {
-      const urlPath = decodeURIComponent((req.url ?? "/").split("?")[0]);
+      let urlPath = decodeURIComponent((req.url ?? "/").split("?")[0]);
+      // The export is built with experiments.baseUrl = basePath — serve it there.
+      if (basePath && urlPath.startsWith(basePath)) {
+        urlPath = urlPath.slice(basePath.length) || "/";
+      }
       let filePath = normalize(join(dir, urlPath));
       if (!filePath.startsWith(normalize(dir))) {
         res.writeHead(403).end();
@@ -74,10 +78,14 @@ async function shot(page: Page, dir: string, name: string, paths: string[]) {
   }
 }
 
-export async function validateWebBuild(distDir: string, shotsDir: string): Promise<ValidationResult> {
+export async function validateWebBuild(
+  distDir: string,
+  shotsDir: string,
+  basePath = "",
+): Promise<ValidationResult> {
   mkdirSync(shotsDir, { recursive: true });
-  const { server, port } = await serveStatic(distDir);
-  const base = `http://127.0.0.1:${port}`;
+  const { server, port } = await serveStatic(distDir, basePath);
+  const base = `http://127.0.0.1:${port}${basePath}`;
   const issues: ValidationIssue[] = [];
   const screenshots: string[] = [];
   const consoleErrors = new Map<string, number>();

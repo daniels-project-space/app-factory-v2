@@ -448,7 +448,7 @@ async function runValidate(p: Payload, app: AppDoc, workerId: string) {
     rmSync(shotsDir, { recursive: true, force: true });
     mkdirSync(shotsDir, { recursive: true });
 
-    const result = await validateWebBuild(gates.exportDir, shotsDir);
+    const result = await validateWebBuild(gates.exportDir, shotsDir, `/demo/${app.slug}`);
     allIssues.push(...result.issues);
     paywallReachable = result.paywallReachable;
     screenshotCount = result.screenshots.length;

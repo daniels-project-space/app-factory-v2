@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Loop — Keep the flame",
+    "name": "Loop \u2014 Keep the flame",
     "slug": "loop",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -40,7 +40,8 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "baseUrl": "/demo/loop"
     }
   }
 }

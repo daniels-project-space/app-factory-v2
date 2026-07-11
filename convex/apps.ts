@@ -318,6 +318,14 @@ export const failStage = mutation({
   },
 });
 
+/** Point the demo proxy at a new R2 build prefix (used by republish tooling). */
+export const setDemo = mutation({
+  args: { id: v.id("apps"), demoBuildKey: v.string() },
+  handler: async (ctx, { id, demoBuildKey }) => {
+    await ctx.db.patch(id, { demoBuildKey, demoUpdatedAt: now(), updatedAt: now() });
+  },
+});
+
 /** Daniel's controls */
 export const setPaused = mutation({
   args: { id: v.id("apps"), paused: v.boolean() },

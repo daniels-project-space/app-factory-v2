@@ -56,6 +56,12 @@ export function scaffoldApp(repo: string, slug: string, name: string): string {
       .replaceAll("__BUNDLE_ID__", `space.danielsproject.${slug.replace(/-/g, "")}`);
     writeFileSync(p, text);
   }
+  // Web exports are served from /demo/<slug>/ — bake the base URL so asset
+  // paths resolve there (v1 sed-hacked exported bundles instead; never again).
+  const appJsonPath = join(dst, "app.json");
+  const appJson = JSON.parse(readFileSync(appJsonPath, "utf8"));
+  appJson.expo.experiments = { ...(appJson.expo.experiments ?? {}), baseUrl: `/demo/${slug}` };
+  writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2));
   mkdirSync(join(dst, ".factory"), { recursive: true });
   return dst;
 }
