@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { sh, npx } from "./shell";
 
 /**
@@ -54,7 +54,14 @@ export async function runGates(dir: string): Promise<GateResult> {
     const exp = await npx(["expo", "export", "--platform", "web", "--output-dir", "dist"], {
       cwd: dir,
       timeoutMs: 12 * 60 * 1000,
-      env: { ...process.env, CI: "1", EXPO_NO_TELEMETRY: "1" },
+      env: {
+        ...process.env,
+        CI: "1",
+        EXPO_NO_TELEMETRY: "1",
+        // Scaffolded apps bake baseUrl in app.json; ported apps read this env
+        // (their app.config.ts uses EXPO_BASE_URL). Both resolve to /demo/<slug>.
+        EXPO_BASE_URL: `/demo/${basename(dir)}`,
+      },
     });
     if (exp.code !== 0 || !existsSync(join(dir, "dist", "index.html"))) {
       issues.push({

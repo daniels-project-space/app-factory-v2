@@ -1,0 +1,67 @@
+{
+  "appStoreConnect": {
+    "appName": "ReviewPulse - Review Manager",
+    "subtitle": "Get More Google Reviews Fast",
+    "bundleId": "com.appfactory.reviewpulse",
+    "primaryCategory": "Business",
+    "secondaryCategory": "Productivity",
+    "ageRating": "4+",
+    "version": "1.0.0",
+    "keywords": "review,google reviews,review manager,reputation,SMS,review request,yelp,business reviews,feedback",
+    "privacyUrl": "https://reviewpulse.app/privacy",
+    "supportUrl": "mailto:support@reviewpulse.app",
+    "marketingUrl": "https://reviewpulse.app",
+    "copyright": "2026 ReviewPulse",
+    "locale": "en-US",
+    "promotionalText": "Send SMS review requests after every job. Monitor Google and Yelp reviews in real time. Reply with AI drafts. $14.99/month, no contract.",
+    "whatsNew": "First release of ReviewPulse! Send SMS review requests, monitor Google and Yelp reviews in real time, reply with AI-drafted responses, track analytics, and manage customer contacts. Free tier included.",
+    "inAppPurchases": [
+      {
+        "referenceName": "ReviewPulse Pro Monthly",
+        "productId": "com.appfactory.reviewpulse.pro.monthly",
+        "type": "auto-renewable",
+        "price": 14.99,
+        "duration": "1 month",
+        "description": "Unlimited SMS requests, AI reply drafts, Yelp monitoring, full analytics dashboard, push notifications"
+      }
+    ],
+    "screenshots": {
+      "iPhone6_9": [
+        "assets/screenshots/01-review-feed.png",
+        "assets/screenshots/02-ai-reply.png",
+        "assets/screenshots/03-sms-request.png",
+        "assets/screenshots/04-analytics.png",
+        "assets/screenshots/05-customers.png",
+        "assets/screenshots/06-settings.png"
+      ]
+    },
+    "appIcon": "assets/icon.png",
+    "reviewNotes": "This app is a B2B review management tool for solo business owners. SMS review requests are sent by business owners to their own customers (not marketing/spam). The Google Business Profile OAuth flow connects the user's own business profile. AI reply drafts use Claude Haiku via server-side Supabase Edge Functions. Free tier: 5 SMS/month, 1 connected profile. Pro tier: unlimited SMS, AI replies, multi-platform monitoring.",
+    "privacyChoices": {
+      "dataCollection": [
+        {
+          "dataType": "Contact Info (Email, Phone)",
+          "purpose": "App Functionality",
+          "linked": true
+        },
+        {
+          "dataType": "User Content (Reviews, Replies)",
+          "purpose": "App Functionality",
+          "linked": true
+        },
+        {
+          "dataType": "Identifiers (User ID)",
+          "purpose": "App Functionality, Analytics",
+          "linked": true
+        },
+        {
+          "dataType": "Usage Data",
+          "purpose": "Analytics",
+          "linked": false
+        }
+      ],
+      "thirdPartySharing": false,
+      "tracking": false
+    }
+  }
+}

@@ -42,3 +42,8 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# generated app workspaces
+apps/*/node_modules/
+apps/*/dist/
+apps/*/.expo/

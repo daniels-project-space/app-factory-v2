@@ -224,5 +224,6 @@ export default defineSchema({
     budgetDay: v.string(), // YYYY-MM-DD the spent counter refers to
     forgeScoutEnabled: v.boolean(),
     designSignoffRequired: v.boolean(), // if false, design auto-advances
+    ideaScoutEnabled: v.optional(v.boolean()), // daily autonomous idea generation
   }).index("by_key", ["key"]),
 });

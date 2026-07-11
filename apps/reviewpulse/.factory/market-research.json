@@ -1,0 +1,65 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "api_error_status": null,
+  "duration_ms": 27883,
+  "duration_api_ms": 29000,
+  "num_turns": 1,
+  "result": "```json\n{\n  \"naming\": {\n    \"candidates\": [\n      {\n        \"name\": \"ReviewPulse\",\n        \"keywords\": [\"pulse\", \"monitoring\", \"real-time\", \"heartbeat\", \"professional tool\"],\n        \"rationale\": \"Aligns with core design system (EKG pulse motif). Professional equipment vibe. Memorable. Owns the 'heartbeat' positioning vs generic competitors.\"\n      },\n      {\n        \"name\": \"JobMonitor\",\n        \"keywords\": [\"job site\", \"monitoring\", \"contractors\", \"real-time dashboard\"],\n        \"rationale\": \"Directly mirrors 'Job Site Monitor' aesthetic. Contractor-focused naming. Clear category positioning.\"\n      },\n      {\n        \"name\": \"ServicePulse\",\n        \"keywords\": [\"service providers\", \"real-time\", \"pulse\", \"monitoring\"],\n        \"rationale\": \"Captures service-provider vertical. Maintains pulse branding. Broader than 'job' (includes beauty, wellness).\"\n      },\n      {\n        \"name\": \"ClientVoice\",\n        \"keywords\": [\"customer feedback\", \"reputation\", \"reviews\", \"voice\"],\n        \"rationale\": \"Emotional positioning around customer satisfaction. Less technical, more relationship-focused.\"\n      }\n    ],\n    \"keyword_analysis\": \"google reviews, review management, reputation monitoring, SMS requests, contractor apps, solo business, local business reviews, customer feedback, real-time alerts, home services, review responses, rating management, business reputation, contractor software, mobile review app\",\n    \"chosen_name\": \"ReviewPulse\",\n    \"domain_suggestions\": [\"reviewpulse.com\", \"reviewpulse.app\", \"reviewpulse.io\"],\n    \"competitive_names\": [\"Podium\", \"Birdeye\", \"Trustpilot\", \"GetFiveStars\", \"ReputationMonitor\", \"Wonderly\", \"Brand.com\", \"Brandwatch\", \"LocalIQ\", \"ReviewTrackers\"]\n  },\n  \"pricing\": {\n    \"competitors\": [\n      {\n        \"name\": \"Podium\",\n        \"free_tier\": \"Limited (lead capture only)\",\n        \"pro_price\": \"$99-$299/month\",\n        \"business_price\": \"$599+/month\"\n      },\n      {\n        \"name\": \"Birdeye\",\n        \"free_tier\": \"Limited dashboard\",\n        \"pro_price\": \"$299-$500/month\",\n        \"business_price\": \"$1000+/month\"\n      },\n      {\n        \"name\": \"Trustpilot\",\n        \"free_tier\": \"Basic reviews only\",\n        \"pro_price\": \"$200-$400/month\",\n        \"business_price\": \"Custom pricing\"\n      },\n      {\n        \"name\": \"GetFiveStars\",\n        \"free_tier\": \"None\",\n        \"pro_price\": \"$99-$399/month\",\n        \"business_price\": \"Custom enterprise\"\n      }\n    ],\n    \"recommended_tiers\": {\n      \"free\": {\n        \"price\": 0,\n        \"features\": [\"Connect 1 Google Business Profile\", \"View all incoming reviews real-time\", \"5 SMS review requests/month\", \"Basic dashboard\", \"Manual reply composition\", \"Mobile app access\"]\n      },\n      \"pro\": {\n        \"price\": 14.99,\n        \"billing\": \"monthly\",\n        \"annual_equivalent\": 179.88,\n        \"features\": [\"Unlimited SMS review requests\", \"AI-drafted reply suggestions\", \"Yelp + Trustpilot monitoring\", \"Push notifications for new reviews\", \"CSV bulk import\", \"Advanced analytics & trends\", \"Reply templates\", \"No annual contracts\"]\n      },\n      \"business\": {\n        \"price\": 49.99,\n        \"features\": [\"Everything in Pro\", \"Multi-location management (5+ profiles)\", \"Team member access (up to 5)\", \"White-label option\", \"Priority SMS delivery\", \"API access\", \"Dedicated support\", \"Custom reporting\"]\n      }\n    },\n    \"justification\": \"Competitors charge $100-600/month. ReviewPulse targets solo pros (28.5M US market, 3.5M primary). $14.99 is 85% cheaper than nearest competitor, removes annual contract friction, SMS-first positioning justifies $1.99 customer acquisition cost. Pro tier pays off after 7-8 customers request reviews via app. Business tier captures multi-location demand without losing solo market.\",\n    \"trial_period_days\": 14,\n    \"trial_rationale\": \"Solo contractors may not send jobs daily. 14 days = ~2-3 job cycles, enough SMS requests to experience core value (AI replies, multi-platform monitoring) without creating annual-subscription pressure. Longer trial increases conversion vs 7-day standard (typical SaaS churn spike at day 8).\"\n  },\n  \"aso\": {\n    \"top_keywords\": [\"google reviews\", \"review management\", \"reputation manager\", \"SMS review requests\", \"contractor app\", \"solo business\", \"local business reviews\", \"customer feedback app\", \"review monitoring\", \"home services app\"],\n    \"recommended_title\": \"ReviewPulse - Review Manager\",\n    \"recommended_subtitle\": \"SMS requests & real-time replies\",\n    \"recommended_keywords\": \"reviews, google reviews, reputation, review requests, SMS, contractors, home services, plumber, electrician, solo business, local business, customer feedback\",\n    \"category\": \"Business\"\n  },\n  \"paywall_strategy\": {\n    \"trigger\": \"Attempt to send 6th SMS review request in calendar month; or view 8+ review notifications with no reply draft shown\",\n    \"free_tier_scope\": \"1 Google Business Profile | view all reviews real-time | 5 SMS/month | basic dashboard | manual replies\",\n    \"gated_features\": [\n      {\n        \"feature\": \"Unlimited SMS requests\",\n        \"rationale\": \"Core engagement driver. Free tier 5/month creates expansion revenue at $0.50-1.00 per additional SMS (perceived value vs cost)\"\n      },\n      {\n        \"feature\": \"AI-drafted replies\",\n        \"rationale\": \"Highest perceived value. Reduces friction for non-writers. Demonstrates Pro ROI within 2 replies.\"\n      },\n      {\n        \"feature\": \"Yelp/Trustpilot monitoring\",\n        \"rationale\": \"Comprehensive reputation = Pro-only. Free tier sees Google only (80% of contractor searches). Multi-platform justifies upgrade.\"\n      },\n      {\n        \"feature\": \"Push notifications\",\n        \"rationale\": \"Real-time is Pro brand promise. Free tier gets email digest (lower urgency). Push = paid experience.\"\n      },\n      {\n        \"feature\": \"CSV bulk import + reply templates\",\n        \"rationale\": \"Power-user / multi-location features. Signal for Business tier upsell after 3 months.\"\n      }\n    ],\n    \"trial_unlocks\": \"14-day Pro access: unlimited SMS, AI replies, all monitoring, push notifications, templates. Positions as 'full professional experience' without decision friction.\",\n    \"loss_aversion_messaging\": \"\\\"Your trial access to unlimited review requests expires in 2 days. Keep replying instantly to customers with Pro ($14.99/month). No annual contract.\\\"\"\n  }\n}\n```",
+  "stop_reason": "end_turn",
+  "session_id": "b3e1ce64-625d-4670-bab8-e6ac8a04f3a5",
+  "total_cost_usd": 0.05970600000000001,
+  "usage": {
+    "input_tokens": 9,
+    "cache_creation_input_tokens": 33428,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 2952,
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 33428,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "",
+    "iterations": [
+      {
+        "input_tokens": 9,
+        "output_tokens": 2952,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 33428,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 33428
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 3091,
+      "outputTokens": 2966,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 33428,
+      "webSearchRequests": 0,
+      "costUSD": 0.05970600000000001,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "uuid": "d2618e5a-1ad4-407b-b73e-4d874e6df22a",
+  "_metadata": {
+    "generated_at": "2026-04-21T04:10:32.349590+00:00",
+    "slug": "reviewpulse",
+    "pipeline": "factory",
+    "generator": "generate-market-research.sh"
+  }
+}

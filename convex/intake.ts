@@ -291,6 +291,7 @@ const DEFAULTS = {
   budgetDay: "1970-01-01",
   forgeScoutEnabled: false,
   designSignoffRequired: true,
+  ideaScoutEnabled: true,
 };
 
 export const getSettings = query({
@@ -311,6 +312,7 @@ export const updateSettings = mutation({
     dailyBudgetUsd: v.optional(v.number()),
     forgeScoutEnabled: v.optional(v.boolean()),
     designSignoffRequired: v.optional(v.boolean()),
+    ideaScoutEnabled: v.optional(v.boolean()),
     // accounting corrections only (e.g. estimator bug) — not a control knob
     spentTodayUsd: v.optional(v.number()),
   },

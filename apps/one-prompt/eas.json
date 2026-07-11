@@ -1,0 +1,48 @@
+{
+  "cli": {
+    "version": ">= 18.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "APP_VARIANT": "development"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      },
+      "channel": "preview",
+      "env": {
+        "APP_VARIANT": "preview"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "APP_VARIANT": "production"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascApiKeyPath": "./keys/asc-api-key.p8",
+        "ascApiKeyIssuerId": "${ASC_API_KEY_ISSUER_ID}",
+        "ascApiKeyId": "${ASC_API_KEY_ID}"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./keys/google-service-account.json",
+        "track": "internal"
+      }
+    }
+  }
+}
