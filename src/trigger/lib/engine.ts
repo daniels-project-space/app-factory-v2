@@ -60,11 +60,20 @@ export async function runAgent<S extends z.ZodTypeAny | undefined = undefined>(
       },
     } as never);
 
-    const usage = (result as { usage?: { inputTokens?: number; outputTokens?: number } }).usage;
+    const usage = (
+      result as {
+        usage?: { inputTokens?: number; outputTokens?: number; cachedInputTokens?: number };
+      }
+    ).usage;
     const inputTokens = usage?.inputTokens ?? 0;
     const outputTokens = usage?.outputTokens ?? 0;
+    const cached = Math.min(usage?.cachedInputTokens ?? 0, inputTokens);
     const rate = RATES[opts.model] ?? RATES.sonnet;
-    const costUsd = (inputTokens * rate.in + outputTokens * rate.out) / 1_000_000;
+    // Cache reads bill at ~10% of input rate — without this the budget guard
+    // over-counts agentic sessions ~5-10x (they are mostly cache hits).
+    const costUsd =
+      ((inputTokens - cached) * rate.in + cached * rate.in * 0.1 + outputTokens * rate.out) /
+      1_000_000;
 
     const text = (result as { text?: string }).text ?? "";
     const object = (result as { object?: unknown }).object;
