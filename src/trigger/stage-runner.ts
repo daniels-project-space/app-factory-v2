@@ -1,4 +1,4 @@
-import { task } from "@trigger.dev/sdk";
+import { task, tasks } from "@trigger.dev/sdk";
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { cvxMutation, cvxQuery, logEvent } from "@/factory/convex";
@@ -98,24 +98,37 @@ export const stageRunner = task({
       if (!app) throw new Error("app not found");
       await logEvent(payload.appId, "stage_started", `${payload.stage} started (${payload.name})`);
 
+      let result: unknown;
       switch (payload.stage) {
         case "inception":
-          return await runInception(payload, app, workerId);
+          result = await runInception(payload, app, workerId);
+          break;
         case "roadmap":
-          return await runRoadmap(payload, app, workerId);
+          result = await runRoadmap(payload, app, workerId);
+          break;
         case "design":
-          return await runDesign(payload, app, workerId);
+          result = await runDesign(payload, app, workerId);
+          break;
         case "build":
-          return await runBuild(payload, app, workerId);
+          result = await runBuild(payload, app, workerId);
+          break;
         case "validate":
-          return await runValidate(payload, app, workerId);
+          result = await runValidate(payload, app, workerId);
+          break;
         case "review":
-          return await runReview(payload, app, workerId);
+          result = await runReview(payload, app, workerId);
+          break;
         case "package":
-          return await runPackage(payload, app, workerId);
+          result = await runPackage(payload, app, workerId);
+          break;
         default:
           throw new Error(`unknown stage ${payload.stage}`);
       }
+      // Chain: immediately dispatch the next runnable stage instead of waiting
+      // for the 5-minute cron. Same guards as the orchestrator (kill switch,
+      // budget, concurrency via claimWork).
+      await chainNext(workerId).catch(() => {});
+      return result;
     } catch (err) {
       await cvxMutation("apps:failStage", {
         id: payload.appId,
@@ -128,6 +141,49 @@ export const stageRunner = task({
     }
   },
 });
+
+async function chainNext(fromWorkerId: string) {
+  const settings = (await cvxQuery("intake:getSettings")) as {
+    running: boolean;
+    maxConcurrent: number;
+    dailyBudgetUsd: number;
+    spentTodayUsd: number;
+    budgetDay: string;
+  };
+  if (!settings.running) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (settings.budgetDay === today && settings.spentTodayUsd >= settings.dailyBudgetUsd) return;
+  const running = (await cvxQuery("apps:runningCount")) as number;
+  if (running >= settings.maxConcurrent) return;
+
+  const claims = (await cvxMutation("apps:claimWork", {
+    slots: 1,
+    workerId: `chain-${fromWorkerId}`,
+  })) as Array<{
+    id: string;
+    slug: string;
+    name: string;
+    stage: string;
+    buildRound: number;
+    reviewRound: number;
+    origin: "daniel" | "factory" | "forge";
+    attempts: number;
+  }>;
+  for (const claim of claims) {
+    const handle = await tasks.trigger("stage-runner", {
+      appId: claim.id,
+      slug: claim.slug,
+      name: claim.name,
+      stage: claim.stage,
+      buildRound: claim.buildRound,
+      reviewRound: claim.reviewRound,
+      origin: claim.origin,
+      attempts: claim.attempts,
+    });
+    await cvxMutation("apps:relock", { id: claim.id, from: `chain-${fromWorkerId}`, to: handle.id });
+    await logEvent(claim.id, "dispatched", `${claim.stage} chain-dispatched (${handle.id})`);
+  }
+}
 
 /* ── stage handlers ─────────────────────────────────────────────────────── */
 
