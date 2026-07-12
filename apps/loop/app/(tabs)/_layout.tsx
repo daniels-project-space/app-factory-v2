@@ -4,15 +4,20 @@ import { router, Tabs } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
 
 // The paywall opens as a modal pushed onto the root Stack, above the tab
-// navigator. Without this, tapping a different tab switches the tab bar's
-// active route underneath the modal but leaves the modal itself on screen —
-// so e.g. Settings becomes unreachable once the paywall has been triggered
-// from Reflect. Every tab press dismisses any modal on top of the stack
-// first, so the tab bar always actually navigates.
-function dismissModalsOnTabPress() {
-  if (router.canDismiss()) {
-    router.dismissAll();
-  }
+// navigator. Relying on the default tabPress action to switch the visible
+// tab while separately calling router.dismissAll() raced with the modal
+// dismissal — on web export the default tab switch could resolve before (or
+// without ever actually cancelling in favor of) the imperative dismiss, so
+// the paywall modal stayed pinned on top no matter which tab was pressed
+// underneath it. router.dismissTo() dismisses the modal AND navigates to the
+// target tab as a single transition, so there's nothing left to race.
+function tabPressListener(href: string) {
+  return ({ preventDefault }: { preventDefault: () => void }) => {
+    if (router.canDismiss()) {
+      preventDefault();
+      router.dismissTo(href);
+    }
+  };
 }
 
 export default function TabsLayout() {
@@ -33,12 +38,10 @@ export default function TabsLayout() {
           fontSize: 11,
         },
       }}
-      screenListeners={{
-        tabPress: dismissModalsOnTabPress,
-      }}
     >
       <Tabs.Screen
         name="index"
+        listeners={{ tabPress: tabPressListener('/(tabs)') }}
         options={{
           title: 'Home',
           tabBarButtonTestID: 'tab-home',
@@ -49,6 +52,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="reflect"
+        listeners={{ tabPress: tabPressListener('/(tabs)/reflect') }}
         options={{
           title: 'Reflect',
           tabBarButtonTestID: 'tab-reflect',
@@ -59,6 +63,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="settings"
+        listeners={{ tabPress: tabPressListener('/(tabs)/settings') }}
         options={{
           title: 'Settings',
           tabBarButtonTestID: 'tab-settings',

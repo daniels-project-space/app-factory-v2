@@ -21,14 +21,18 @@ export interface EmberStripProps {
 export function EmberStrip({ values, labels, max = 3, testID }: EmberStripProps) {
   const theme = useTheme();
   const barHeight = 96;
-  const minHeight = 10;
+  const minHeight = 14;
 
   return (
     <View testID={testID} style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
       {values.map((value, i) => {
         const ratio = Math.max(0, Math.min(1, value / max));
-        const color =
-          ratio >= 0.85 ? theme.flame.core : ratio >= 0.5 ? theme.flame.mid : theme.flame.smoke;
+        const isEmpty = value <= 0;
+        // Zero-value days still need to read as a bar rather than a smudge —
+        // the smoke tone alone gets too close to the dark card background to
+        // register, so an empty day gets an outline instead of relying on
+        // fill color contrast.
+        const color = ratio >= 0.85 ? theme.flame.core : ratio >= 0.5 ? theme.flame.mid : theme.flame.smoke;
         return (
           <View key={i} style={{ flex: 1, alignItems: 'center' }}>
             <View style={{ height: barHeight, width: '100%', justifyContent: 'flex-end' }}>
@@ -37,9 +41,13 @@ export function EmberStrip({ values, labels, max = 3, testID }: EmberStripProps)
                 style={{
                   width: '100%',
                   height: Math.max(minHeight, barHeight * ratio),
-                  backgroundColor: color,
+                  backgroundColor: isEmpty ? 'transparent' : color,
+                  borderWidth: isEmpty ? 1.5 : 0,
+                  borderColor: theme.colors.textMuted,
                   borderTopLeftRadius: theme.radius.sm,
                   borderTopRightRadius: theme.radius.sm,
+                  borderBottomLeftRadius: isEmpty ? theme.radius.sm : 0,
+                  borderBottomRightRadius: isEmpty ? theme.radius.sm : 0,
                 }}
               />
             </View>
