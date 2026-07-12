@@ -1,3 +1,4 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
@@ -42,6 +43,7 @@ function summaryLine(slips: number, fullDays: number): string {
 export default function ReflectScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const tabBarHeight = useBottomTabBarHeight();
   const anchorHabits = useHabits((s) => s.anchorHabits);
   const history = useHabits((s) => s.history);
   const flameHeat = useHabits((s) => s.flameHeat);
@@ -227,7 +229,7 @@ export default function ReflectScreen() {
   };
 
   return (
-    <Screen scroll testID="reflect-screen">
+    <Screen scroll extraBottomInset={tabBarHeight} testID="reflect-screen">
       <Text variant="display" style={{ marginTop: theme.spacing.lg }}>
         This week
       </Text>

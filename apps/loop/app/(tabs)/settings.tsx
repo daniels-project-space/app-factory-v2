@@ -1,3 +1,4 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -29,6 +30,7 @@ type SheetKind = 'flame' | 'privacy' | 'terms' | null;
 export default function SettingsScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const tabBarHeight = useBottomTabBarHeight();
   const themeOverride = useSettings((s) => s.themeOverride);
   const setThemeOverride = useSettings((s) => s.setThemeOverride);
   const notificationsEnabled = useSettings((s) => s.notificationsEnabled);
@@ -69,7 +71,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <Screen scroll testID="settings-screen">
+    <Screen scroll extraBottomInset={tabBarHeight} testID="settings-screen">
       <Text variant="display" style={{ marginTop: theme.spacing.lg }}>
         Settings
       </Text>

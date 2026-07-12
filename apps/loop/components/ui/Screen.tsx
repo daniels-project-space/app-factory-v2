@@ -12,6 +12,8 @@ export interface ScreenProps {
   padded?: boolean;
   /** Safe-area edges to respect. Defaults to top only (tab bar handles bottom). */
   edges?: Edge[];
+  /** Extra bottom padding in scroll content, e.g. to clear a fixed tab bar. */
+  extraBottomInset?: number;
   testID?: string;
   style?: StyleProp<ViewStyle>;
 }
@@ -22,6 +24,7 @@ export function Screen({
   scroll = false,
   padded = true,
   edges = ['top'],
+  extraBottomInset = 0,
   testID,
   style,
 }: ScreenProps) {
@@ -37,7 +40,10 @@ export function Screen({
       {scroll ? (
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={[padding, { paddingBottom: theme.spacing.xxl }]}
+          contentContainerStyle={[
+            padding,
+            { paddingBottom: theme.spacing.xxl + extraBottomInset },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           {children}

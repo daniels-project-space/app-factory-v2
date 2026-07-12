@@ -1,3 +1,4 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
@@ -43,6 +44,7 @@ function reassuranceLine(fraction: number, streak: number): string {
 export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const tabBarHeight = useBottomTabBarHeight();
   const isPro = useSubscription((s) => s.isPro);
   const anchorHabits = useHabits((s) => s.anchorHabits);
   const anchorTimes = useHabits((s) => s.anchorTimes);
@@ -106,7 +108,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <Screen scroll testID="home-screen">
+    <Screen scroll extraBottomInset={tabBarHeight} testID="home-screen">
       <View style={[styles.headerRow, { marginTop: theme.spacing.lg }]}>
         <View>
           <Text variant="caption" color="textMuted">
