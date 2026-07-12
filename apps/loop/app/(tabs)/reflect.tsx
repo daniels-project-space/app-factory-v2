@@ -1,8 +1,8 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Share, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
@@ -60,18 +60,25 @@ export default function ReflectScreen() {
   // — the other half of "3rd anchor completion or first reflection,
   // whichever comes first" (see index.tsx for the completion-count half).
   // The shared `hardPaywallTriggered` flag keeps whichever fires first from
-  // being immediately followed by the other.
-  useEffect(() => {
-    const firstVisit = !reflectionSeen;
-    if (firstVisit) markReflectionSeen();
-    if (firstVisit && !isPro && !hardPaywallTriggered) {
-      markHardPaywallTriggered();
-      router.push('/paywall');
-    }
-    // Intentionally runs once, on mount, against the persisted flags read
-    // at that moment — not on every re-render as isPro/flags change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // being immediately followed by the other. The push is delayed until a
+  // beat after the tab is focused (rather than firing the instant the
+  // screen mounts) so the Reflect content itself actually paints first —
+  // and the timer is cancelled on blur so a user who taps away to another
+  // tab before it fires never gets the paywall sprung on THAT tab instead.
+  useFocusEffect(
+    useCallback(() => {
+      const firstVisit = !reflectionSeen;
+      if (firstVisit) markReflectionSeen();
+      if (!firstVisit || isPro || hardPaywallTriggered) return;
+
+      const timer = setTimeout(() => {
+        markHardPaywallTriggered();
+        router.push('/paywall');
+      }, 900);
+      return () => clearTimeout(timer);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [reflectionSeen, isPro, hardPaywallTriggered]),
+  );
 
   useEffect(() => {
     if (!toast) return;

@@ -106,7 +106,7 @@ export default function OnboardingScreen() {
       </View>
 
       {step === 0 ? (
-        <View style={styles.centeredContent}>
+        <View style={[styles.centeredContent, { flex: 1 }]}>
           <Flame heat={0.18} size={88} testID="onboarding-flame" />
           <Text variant="display" center style={{ marginTop: theme.spacing.xxl }}>
             Tend a small fire.

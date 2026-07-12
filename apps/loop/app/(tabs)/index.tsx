@@ -252,9 +252,28 @@ export default function HomeScreen() {
                 ) : (
                   habits.map((habit, i) => {
                     const isChecked = !!completed[habit.id];
-                    const habitLocked = anchorLocked || (!isPro && i >= FREE_HABIT_LIMIT);
+                    const overLimitLocked = !anchorLocked && !isPro && i >= FREE_HABIT_LIMIT;
 
-                    if (habitLocked) {
+                    // A whole locked anchor still shows its real habit text —
+                    // only the free anchor's over-the-limit habits (a
+                    // different lock reason) get the heavier lock/Pro
+                    // treatment, so free users can see what an anchor holds
+                    // before the paywall, not just a wall of lock icons.
+                    if (anchorLocked) {
+                      return (
+                        <ListRow
+                          key={habit.id}
+                          testID={`habit-${habit.id}`}
+                          title={habit.title}
+                          divider={i < habits.length - 1}
+                          onPress={goToPaywall}
+                          left={<Ionicons name="ellipse-outline" size={22} color={theme.colors.textMuted} />}
+                          right={null}
+                        />
+                      );
+                    }
+
+                    if (overLimitLocked) {
                       return (
                         <ListRow
                           key={habit.id}
