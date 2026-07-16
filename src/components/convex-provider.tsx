@@ -9,7 +9,7 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
   // at another app (the previous Vercel value was a placeholder deployment).
   const convexUrl =
     process.env.NEXT_PUBLIC_FACTORY_CONVEX_URL ??
-    "https://successful-starling-140.convex.cloud";
+    "https://successful-starling-140.eu-west-1.convex.cloud";
   const client = useMemo(
     () => new ConvexReactClient(convexUrl),
     [convexUrl],
