@@ -1,5 +1,5 @@
 import { defineConfig } from "@trigger.dev/sdk";
-import { additionalPackages, aptGet } from "@trigger.dev/build/extensions/core";
+import { additionalPackages, aptGet, syncEnvVars } from "@trigger.dev/build/extensions/core";
 import { playwright } from "@trigger.dev/build/extensions/playwright";
 
 /**
@@ -19,17 +19,29 @@ export default defineConfig({
   maxDuration: 5400, // 90 min ceiling per stage run
   machine: "small-2x",
   build: {
-    external: ["@anthropic-ai/claude-agent-sdk", "@mastra/claude", "@mastra/core"],
+    external: ["@anthropic-ai/claude-agent-sdk", "@mastra/claude", "@mastra/core", "@openai/codex"],
     extensions: [
       additionalPackages({
         packages: [
           "@anthropic-ai/claude-agent-sdk@0.3.207",
           "@mastra/claude@0.3.0",
           "@mastra/core@1.50.1",
+          "@openai/codex@latest",
         ],
       }),
       aptGet({ packages: ["git", "ca-certificates"] }),
       playwright({ browsers: ["chromium"] }),
+      syncEnvVars(() => {
+        const values: Record<string, string> = {};
+        const auth = process.env.CODEX_AUTH_JSON_B64;
+        const convex = process.env.FACTORY_CONVEX_URL ?? process.env.NEXT_PUBLIC_CONVEX_URL;
+        if (auth) values.CODEX_AUTH_JSON_B64 = auth;
+        if (convex) {
+          values.FACTORY_CONVEX_URL = convex;
+          values.NEXT_PUBLIC_CONVEX_URL = convex;
+        }
+        return Object.keys(values).length ? values : undefined;
+      }),
     ],
   },
 });

@@ -23,6 +23,10 @@ const TOKEN_DISCIPLINE = `TOKEN DISCIPLINE (context is a budget):
 - Never run expo start/export, git, or npm install — the harness owns those. Run "npx tsc --noEmit" in batches (after every 4-5 files), not per file.
 - No exploratory codebase walks: read only the files your current task names or imports directly.`;
 
+// Provider-neutral instruction registry. The Claude adapter consumes these via
+// sdkOptions; the Codex adapter uses the same text as the headless CLI preamble.
+export const AGENT_INSTRUCTIONS: Record<string, string> = {};
+
 function coding(opts: {
   id: string;
   description: string;
@@ -30,6 +34,7 @@ function coding(opts: {
   model: string;
   maxTurns: number;
 }) {
+  AGENT_INSTRUCTIONS[opts.id] = opts.append;
   return new ClaudeSDKAgent({
     id: opts.id,
     name: opts.id,
@@ -51,6 +56,7 @@ function thinking(opts: {
   maxTurns: number;
   allowedTools?: string[];
 }) {
+  AGENT_INSTRUCTIONS[opts.id] = opts.system;
   return new ClaudeSDKAgent({
     id: opts.id,
     name: opts.id,

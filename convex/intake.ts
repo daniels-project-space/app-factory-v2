@@ -292,6 +292,7 @@ const DEFAULTS = {
   forgeScoutEnabled: false,
   designSignoffRequired: true,
   ideaScoutEnabled: true,
+  agentProvider: "codex" as const,
 };
 
 export const getSettings = query({
@@ -315,6 +316,7 @@ export const updateSettings = mutation({
     ideaScoutEnabled: v.optional(v.boolean()),
     // accounting corrections only (e.g. estimator bug) — not a control knob
     spentTodayUsd: v.optional(v.number()),
+    agentProvider: v.optional(v.union(v.literal("codex"), v.literal("claude"))),
   },
   handler: async (ctx, patch) => {
     const s = await ctx.db

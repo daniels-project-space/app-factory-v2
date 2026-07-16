@@ -115,6 +115,23 @@ export default function SettingsPage() {
       <SectionHeader index="//" title="Factory controls" />
 
       <div className="panel panel-ticks p-4 sm:p-5">
+        <div className="flex items-center gap-3 border-b border-line py-3">
+          <div className="min-w-0 flex-1">
+            <div className="font-display font-semibold uppercase tracking-[0.1em] text-[13px] text-ink">Agent intelligence</div>
+            <div className="mt-0.5 font-mono text-[10px] leading-snug text-ink-faint">subscription used by every factory stage</div>
+          </div>
+          <div className="flex border border-line-bright bg-void p-0.5">
+            {(["codex", "claude"] as const).map((provider) => (
+              <button
+                key={provider}
+                onClick={() => update({ agentProvider: provider })}
+                className={`px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] ${settings.agentProvider === provider ? "bg-amber/15 text-amber" : "text-ink-faint hover:text-ink"}`}
+              >
+                {provider}
+              </button>
+            ))}
+          </div>
+        </div>
         <Toggle
           label="Master switch"
           hint="kill switch — orchestrator claims no work while halted; running stages finish"

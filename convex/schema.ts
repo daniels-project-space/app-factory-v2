@@ -225,5 +225,6 @@ export default defineSchema({
     forgeScoutEnabled: v.boolean(),
     designSignoffRequired: v.boolean(), // if false, design auto-advances
     ideaScoutEnabled: v.optional(v.boolean()), // daily autonomous idea generation
+    agentProvider: v.optional(v.union(v.literal("codex"), v.literal("claude"))),
   }).index("by_key", ["key"]),
 });
