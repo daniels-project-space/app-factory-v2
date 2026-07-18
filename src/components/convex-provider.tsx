@@ -4,11 +4,10 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ReactNode, useMemo } from "react";
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
-  // This app owns its Convex deployment. Keep that binding project-specific so
-  // a stale workspace-wide NEXT_PUBLIC_CONVEX_URL cannot silently point the UI
-  // at another app (the previous Vercel value was a placeholder deployment).
+  // This app owns its Convex deployment. Its Vercel project is bound to this
+  // app-scoped value; do not allow a second legacy variable to override it.
   const convexUrl =
-    process.env.NEXT_PUBLIC_FACTORY_CONVEX_URL ??
+    process.env.NEXT_PUBLIC_CONVEX_URL ??
     "https://successful-starling-140.eu-west-1.convex.cloud";
   const client = useMemo(
     () => new ConvexReactClient(convexUrl),
