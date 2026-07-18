@@ -68,6 +68,62 @@ async function isBlank(page: Page): Promise<boolean> {
   });
 }
 
+type OverflowProbe = {
+  viewportWidth: number;
+  scrollWidth: number;
+  offenders: string[];
+};
+
+/**
+ * Ported from Factory v1's separate overflow probe. Keep it inside the one
+ * canonical Playwright driver so a mobile layout failure is attached to the
+ * same evidence bundle as the screen that produced it.
+ */
+async function probeHorizontalOverflow(page: Page): Promise<OverflowProbe | null> {
+  return page.evaluate(() => {
+    const viewportWidth = window.innerWidth;
+    const scrollWidth = Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth ?? 0);
+    if (scrollWidth <= viewportWidth + 2) return null;
+
+    const offenders: string[] = [];
+    for (const element of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      if (offenders.length >= 5) break;
+      const style = window.getComputedStyle(element);
+      if (style.display === "none" || style.visibility === "hidden" || style.overflowX === "auto" || style.overflowX === "scroll") continue;
+      const rect = element.getBoundingClientRect();
+      if (rect.width > 2 && rect.right > viewportWidth + 2) {
+        const label = [
+          element.tagName.toLowerCase(),
+          element.id ? `#${element.id}` : "",
+          ...Array.from(element.classList).slice(0, 2).map((name) => `.${name}`),
+        ].join("");
+        offenders.push(`${label || "element"} right=${Math.round(rect.right)} width=${Math.round(rect.width)}`);
+      }
+    }
+    return { viewportWidth, scrollWidth, offenders };
+  });
+}
+
+async function reportHorizontalOverflow(
+  page: Page,
+  location: string,
+  issues: ValidationIssue[],
+  reported: Set<string>,
+) {
+  const probe = await probeHorizontalOverflow(page).catch(() => null);
+  if (!probe) return;
+  const fingerprint = `pw:horizontal-overflow:${location}`;
+  if (reported.has(fingerprint)) return;
+  reported.add(fingerprint);
+  issues.push({
+    fingerprint,
+    severity: "P1",
+    source: "gate",
+    title: `Horizontal overflow on ${location}`,
+    detail: `document ${probe.scrollWidth}px exceeds ${probe.viewportWidth}px viewport${probe.offenders.length ? `; ${probe.offenders.join("; ")}` : ""}`,
+  });
+}
+
 async function shot(page: Page, dir: string, name: string, paths: string[]) {
   const p = join(dir, `${name.replace(/[^a-z0-9_-]/gi, "_").slice(0, 60)}.png`);
   try {
@@ -89,6 +145,7 @@ export async function validateWebBuild(
   const issues: ValidationIssue[] = [];
   const screenshots: string[] = [];
   const consoleErrors = new Map<string, number>();
+  const reportedOverflows = new Set<string>();
   let screensVisited = 0;
   let paywallReachable = false;
 
@@ -129,6 +186,7 @@ export async function validateWebBuild(
         detail: "document body has no visible content after load",
       });
     }
+    await reportHorizontalOverflow(page, "cold start", issues, reportedOverflows);
     await shot(page, shotsDir, "00-cold-start", screenshots);
     screensVisited++;
 
@@ -167,6 +225,7 @@ export async function validateWebBuild(
           detail: "tab renders no visible content",
         });
       }
+      await reportHorizontalOverflow(page, `tab "${label}"`, issues, reportedOverflows);
       await shot(page, shotsDir, `02-tab-${i}-${label}`, screenshots);
       screensVisited++;
     }
