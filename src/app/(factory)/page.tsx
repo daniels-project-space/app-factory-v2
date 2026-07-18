@@ -247,6 +247,77 @@ function PipelineBoard({ apps }: { apps: Doc<"apps">[] | undefined }) {
   );
 }
 
+/* ── archived portfolio ───────────────────────────────────────────────── */
+
+function PortfolioCard({ app }: { app: Doc<"apps"> }) {
+  const successor = app.portfolioDisposition === "successor_live";
+  return (
+    <div className="panel border border-line p-3">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0">
+          <Link
+            href={`/apps/${app.slug}`}
+            className="font-display font-bold uppercase tracking-wide text-[13px] leading-tight text-ink hover:text-amber-hot"
+          >
+            {app.name}
+          </Link>
+          <p className="mt-1 text-[11px] leading-snug text-ink-dim">
+            {app.oneLiner}
+          </p>
+        </div>
+        <span
+          className={`ml-auto shrink-0 font-mono text-[9px] uppercase tracking-widest border px-1.5 py-[1px] ${
+            successor
+              ? "border-green/50 text-green"
+              : "border-line-bright text-ink-faint"
+          }`}
+        >
+          {successor ? "successor live" : "retired"}
+        </span>
+      </div>
+      {app.externalUrl && (
+        <a
+          href={app.externalUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-block font-mono text-[10px] uppercase tracking-widest text-blue hover:text-amber"
+        >
+          Open canonical app ↗
+        </a>
+      )}
+    </div>
+  );
+}
+
+function PortfolioArchive({ apps }: { apps: Doc<"apps">[] | undefined }) {
+  const portfolio = apps?.filter((app) => app.status === "archived") ?? [];
+  if (portfolio.length === 0) return null;
+
+  return (
+    <section className="mt-6">
+      <SectionHeader
+        index="//"
+        title="Previous Factory portfolio"
+        right={
+          <span className="font-mono text-[10px] text-ink-faint">
+            {portfolio.length} logged
+          </span>
+        }
+      />
+      <p className="mb-3 text-[12px] leading-snug text-ink-dim">
+        Migrated inventory from the retired VPS Factory. These records are
+        intentionally excluded from the autonomous line; only their verified
+        cloud successor or retirement state is retained.
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {portfolio.map((app) => (
+          <PortfolioCard key={app._id} app={app} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* ── live activity feed ─────────────────────────────────────────────────── */
 
 const KIND_COLOR: Record<string, string> = {
@@ -382,6 +453,7 @@ export default function Dashboard() {
             }
           />
           <PipelineBoard apps={apps} />
+          <PortfolioArchive apps={apps} />
         </section>
         <ActivityFeed apps={apps} />
       </div>

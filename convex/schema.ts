@@ -71,6 +71,13 @@ export default defineSchema({
       }),
     ),
     pricing: v.optional(v.string()),
+    // Imported VPS projects are durable portfolio records, not new work for
+    // the orchestrator. They stay visible in the Factory without being
+    // silently re-queued.
+    portfolioDisposition: v.optional(
+      v.union(v.literal("successor_live"), v.literal("retired")),
+    ),
+    externalUrl: v.optional(v.string()), // canonical successor when one exists
     shareToken: v.string(), // public share page /s/<token>
     demoBuildKey: v.optional(v.string()), // R2 prefix of latest passing web export
     demoUpdatedAt: v.optional(v.number()),

@@ -532,6 +532,24 @@ export default function AppDetail(props: {
         {app.pricing && (
           <p className="mt-1 font-mono text-[11px] text-amber">{app.pricing}</p>
         )}
+        {app.portfolioDisposition && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border border-line bg-void/40 px-2.5 py-2 font-mono text-[10px] uppercase tracking-widest">
+            <span className="text-ink-faint">portfolio record</span>
+            <span className={app.portfolioDisposition === "successor_live" ? "text-green" : "text-ink-dim"}>
+              {app.portfolioDisposition === "successor_live" ? "successor live" : "retired"}
+            </span>
+            {app.externalUrl && (
+              <a
+                href={app.externalUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue hover:text-amber"
+              >
+                open canonical app ↗
+              </a>
+            )}
+          </div>
+        )}
         {app.lastError && (
           <div className="mt-3 border border-red/50 bg-red/5 p-2.5">
             <span className="microlabel text-red">
