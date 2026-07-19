@@ -360,19 +360,40 @@ export const requestChanges = mutation({
   handler: async (ctx, { id, text }) => {
     const app = await ctx.db.get(id);
     if (!app) return;
-    await ctx.db.insert("issues", {
-      appId: id,
-      fingerprint: `daniel:${text.slice(0, 60)}`,
-      severity: "P1",
-      source: "daniel",
-      title: text.slice(0, 120),
-      detail: text,
-      status: "open",
-      attempts: 0,
-      firstSeenRound: app.buildRound,
-      lastSeenRound: app.buildRound,
-      updatedAt: now(),
-    });
+    const jarvisWave = text.match(/^\[JARVIS-GOAL-WAVE-\d+\]/)?.[0];
+    const fingerprint = jarvisWave ? `jarvis:${jarvisWave}` : `daniel:${text.slice(0, 60)}`;
+    const existing = await ctx.db
+      .query("issues")
+      .withIndex("by_app_fingerprint", (q) => q.eq("appId", id).eq("fingerprint", fingerprint))
+      .first();
+    // Jarvis retries this cross-provider mutation until Jarvis Convex records
+    // its acknowledgement. Replaying an accepted wave must never reset an app
+    // that has already advanced past build.
+    if (existing && jarvisWave) return existing._id;
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        severity: "P1",
+        title: text.slice(0, 120),
+        detail: text,
+        status: existing.status === "waived" ? "waived" : "open",
+        lastSeenRound: app.buildRound,
+        updatedAt: now(),
+      });
+    } else {
+      await ctx.db.insert("issues", {
+        appId: id,
+        fingerprint,
+        severity: "P1",
+        source: "daniel",
+        title: text.slice(0, 120),
+        detail: text,
+        status: "open",
+        attempts: 0,
+        firstSeenRound: app.buildRound,
+        lastSeenRound: app.buildRound,
+        updatedAt: now(),
+      });
+    }
     // Daniel's change requests re-open the build loop regardless of stage.
     await ctx.db.patch(id, {
       stage: "build",
