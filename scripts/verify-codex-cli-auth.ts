@@ -25,7 +25,23 @@ type Capture = {
   env: Record<string, string | undefined>;
   config: string;
   authExists: boolean;
+  auth: string;
+  homeFiles: string[];
 };
+
+const validProfile = {
+  auth_mode: "chatgpt",
+  tokens: {
+    access_token: "test-access-token",
+    refresh_token: "test-refresh-token",
+    id_token: "test-id-token",
+    account_id: "test-account-id",
+  },
+};
+
+function canonicalProfile(profile: unknown): string {
+  return Buffer.from(JSON.stringify(profile)).toString("base64");
+}
 
 function restoreEnv() {
   for (const [name, value] of originalEnv) {
@@ -45,16 +61,34 @@ fs.writeFileSync(${JSON.stringify(capture)}, JSON.stringify({
   env: process.env,
   config: fs.readFileSync(path.join(process.env.CODEX_HOME, "config.toml"), "utf8"),
   authExists: fs.existsSync(path.join(process.env.CODEX_HOME, "auth.json")),
+  auth: fs.readFileSync(path.join(process.env.CODEX_HOME, "auth.json"), "utf8"),
+  homeFiles: fs.readdirSync(process.env.CODEX_HOME).sort(),
 }));
 fs.writeFileSync(output, "offline fake response");
 `);
   chmodSync(fakeCodex, 0o755);
 }
 
+async function expectRejectedBeforeLaunch(encoded: string | undefined, label: string) {
+  rmSync(capture, { force: true });
+  if (encoded === undefined) delete process.env.CODEX_AUTH_JSON_B64;
+  else process.env.CODEX_AUTH_JSON_B64 = encoded;
+  await assert.rejects(
+    runCodexCliForTest(fakeCodex, "Invalid auth must fail before a child process starts.", {
+      stage: "build",
+      model: "sonnet",
+      triggerRunId: `offline-${label}-test`,
+      cwd: process.cwd(),
+    }),
+    /Codex subscription auth is (not configured|invalid)/,
+  );
+  assert.equal(existsSync(capture), false, `${label} auth must not invoke the CLI`);
+}
+
 async function main() {
   try {
     fakeCli();
-    process.env.CODEX_AUTH_JSON_B64 = Buffer.from(JSON.stringify({ tokens: { access_token: "test-only" } })).toString("base64");
+    process.env.CODEX_AUTH_JSON_B64 = canonicalProfile(validProfile);
     process.env.CODEX_AUTH_JSON = "raw-auth-sentinel";
     process.env.CODEX_ACCESS_TOKEN = "token-sentinel";
     process.env.OPENAI_API_KEY = "api-only-sentinel";
@@ -77,6 +111,8 @@ async function main() {
     assert.ok(observed.args.includes('forced_login_method="chatgpt"'), "Codex must be forced to ChatGPT login");
     assert.equal(observed.config, 'forced_login_method = "chatgpt"\n');
     assert.equal(observed.authExists, true, "controller subscription auth must be available only in the temporary home");
+    assert.equal(observed.auth, JSON.stringify(validProfile), "only the validated ChatGPT profile may be written");
+    assert.deepEqual(observed.homeFiles, ["auth.json", "config.toml"], "isolated home must contain only the auth profile and forced-login config");
     assert.equal(observed.env.OPENAI_API_KEY, "");
     assert.equal(observed.env.CODEX_API_KEY, "");
     assert.equal(observed.env.CODEX_AUTH_JSON_B64, undefined, "serialized controller auth must not leak into the child env");
@@ -87,22 +123,24 @@ async function main() {
     }
     assert.equal(existsSync(observed.env.HOME!), false, "temporary Codex auth home must be removed after launch");
 
-    rmSync(capture, { force: true });
-    delete process.env.CODEX_AUTH_JSON_B64;
+    await expectRejectedBeforeLaunch(undefined, "missing");
+    await expectRejectedBeforeLaunch(`${canonicalProfile(validProfile)}\n`, "noncanonical");
+    await expectRejectedBeforeLaunch(canonicalProfile({ tokens: validProfile.tokens }), "missing-field");
+    await expectRejectedBeforeLaunch(canonicalProfile({ ...validProfile, extra: "not-allowed" }), "extra-field");
+    await expectRejectedBeforeLaunch(canonicalProfile({ ...validProfile, api_key: "not-allowed" }), "api-key-field");
+    await expectRejectedBeforeLaunch(canonicalProfile({ auth_mode: "chatgpt", tokens: "raw-token" }), "raw-token");
+    await expectRejectedBeforeLaunch(canonicalProfile({
+      auth_mode: "chatgpt",
+      tokens: { ...validProfile.tokens, api_key: "not-allowed" },
+    }), "api-key-token");
+
+    // API-key and raw-token environment variables are not accepted as an
+    // alternative to the controller profile; they must not launch a child.
     process.env.CODEX_AUTH_JSON = "raw-auth-sentinel";
     process.env.CODEX_ACCESS_TOKEN = "token-sentinel";
     process.env.OPENAI_API_KEY = "api-only-sentinel";
     process.env.CODEX_API_KEY = "api-only-sentinel";
-    await assert.rejects(
-      runCodexCliForTest(fakeCodex, "No auth must fail before a child process starts.", {
-        stage: "build",
-        model: "sonnet",
-        triggerRunId: "offline-api-only-test",
-        cwd: process.cwd(),
-      }),
-      /Codex subscription auth is not configured/,
-    );
-    assert.equal(existsSync(capture), false, "API-only auth must not invoke the CLI");
+    await expectRejectedBeforeLaunch(undefined, "api-only");
 
     console.log("Codex CLI subscription-auth launch fixtures passed");
   } finally {

@@ -82,15 +82,41 @@ function codexSubscriptionAuth(): string {
   const encoded = process.env.CODEX_AUTH_JSON_B64;
   if (!encoded) throw new Error("Codex subscription auth is not configured");
 
+  let decoded: Buffer;
   let json: string;
   try {
-    json = Buffer.from(encoded, "base64").toString("utf8");
+    decoded = Buffer.from(encoded, "base64");
+    // Node's decoder deliberately accepts whitespace, URL-safe base64, and
+    // missing padding. The controller contract uses one canonical encoding so
+    // that a malformed or substituted payload cannot be normalized silently.
+    if (decoded.toString("base64") !== encoded) throw new Error("not canonical base64");
+    json = decoded.toString("utf8");
+    if (!Buffer.from(json, "utf8").equals(decoded)) throw new Error("not utf8");
     const parsed: unknown = JSON.parse(json);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object");
+    if (!isChatGptSubscriptionProfile(parsed)) throw new Error("not a ChatGPT subscription profile");
   } catch {
     throw new Error("Codex subscription auth is invalid");
   }
   return json;
+}
+
+const CHATGPT_PROFILE_KEYS = ["auth_mode", "tokens"] as const;
+const CHATGPT_TOKEN_KEYS = ["access_token", "refresh_token", "id_token", "account_id"] as const;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasExactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
+  const keys = Object.keys(value);
+  return keys.length === expected.length && expected.every((key) => Object.hasOwn(value, key));
+}
+
+function isChatGptSubscriptionProfile(value: unknown): boolean {
+  if (!isRecord(value) || !hasExactKeys(value, CHATGPT_PROFILE_KEYS) || value.auth_mode !== "chatgpt") return false;
+  const tokens = value.tokens;
+  if (!isRecord(tokens) || !hasExactKeys(tokens, CHATGPT_TOKEN_KEYS)) return false;
+  return CHATGPT_TOKEN_KEYS.every((key) => typeof tokens[key] === "string" && tokens[key].trim().length > 0);
 }
 
 function codexLaunch(): CodexLaunch {
