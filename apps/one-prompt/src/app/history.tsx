@@ -158,7 +158,7 @@ export default function HistoryScreen() {
               <ActionTile
                 icon={<SparklesIcon size={22} color={theme.accent} />}
                 title="Weekly Reflection"
-                subtitle={isPremium ? 'View your AI insights' : 'Upgrade to unlock'}
+                subtitle={isPremium ? 'View your weekly reflection' : 'Upgrade to unlock'}
                 onPress={handleOpenWeeklyReflection}
                 badge={!isPremium ? 'PRO' : undefined}
                 badgeColor={theme.accent}

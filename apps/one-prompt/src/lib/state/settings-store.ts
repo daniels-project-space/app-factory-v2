@@ -163,7 +163,7 @@ export const COLOR_THEMES: ColorTheme[] = [
 export type PromptStyle = 'gentle' | 'neutral' | 'deep';
 export type AppearanceMode = 'system' | 'light' | 'dark';
 
-// Philosopher personas for AI reflections
+// Philosopher personas for curated weekly reflection variants
 export type PhilosopherId = 'none' | 'nietzsche' | 'aurelius' | 'plato' | 'schiller' | 'camus';
 
 export interface Philosopher {
@@ -226,7 +226,7 @@ export const PHILOSOPHERS: Philosopher[] = [
   },
 ];
 
-// Journaling goals for AI insights personalization
+// Journaling goals for weekly reflection personalization
 export type JournalingGoalId =
   | 'self-awareness'
   | 'gratitude'
@@ -346,7 +346,7 @@ interface SettingsState {
   customPhotoPrompts: string[]; // User's custom prompts for photo mode
   promptCategoriesEnabled: boolean; // Category-based prompts feature
   selectedPromptCategories: string[]; // IDs of selected prompt categories
-  selectedPhilosopher: PhilosopherId; // AI reflection philosopher persona
+  selectedPhilosopher: PhilosopherId; // weekly reflection philosopher persona
   journalingGoals: JournalingGoalId[]; // User's selected journaling goals (up to 3)
 
   // Actions

@@ -334,7 +334,7 @@ export function CalendarPanel({ onClose }: CalendarPanelProps) {
           />
         </Animated.View>
 
-        {/* Weekly AI Insights Section */}
+        {/* Weekly reflection section */}
         <Animated.View entering={FadeInDown.delay(200).duration(300)} className="mb-4">
           <BlurView
             intensity={theme.isDark ? 20 : 45}
@@ -417,7 +417,7 @@ export function CalendarPanel({ onClose }: CalendarPanelProps) {
                     style={{ backgroundColor: theme.accent }}
                   >
                     <Text className="font-semibold text-sm text-white">
-                      View Full AI Analysis
+                      View Full Reflection
                     </Text>
                   </Pressable>
                 </>
@@ -426,7 +426,7 @@ export function CalendarPanel({ onClose }: CalendarPanelProps) {
                   <View className="relative overflow-hidden rounded-xl mb-4">
                     <View className="p-4" style={{ backgroundColor: theme.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)' }}>
                       <Text className="font-sans text-sm" style={{ color: theme.textSecondary }}>
-                        Unlock AI-powered insights about your week, mood patterns, and personalized encouragement...
+                        Unlock an on-device reflection of your week, mood patterns, and personalized encouragement...
                       </Text>
                     </View>
                   </View>

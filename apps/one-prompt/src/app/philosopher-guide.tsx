@@ -101,7 +101,7 @@ export default function PhilosopherGuideScreen() {
                         className="font-sans text-sm mt-0.5"
                         style={{ color: theme.textSecondary }}
                       >
-                        A philosopher will shape your weekly AI insights
+                        A philosopher will shape your weekly reflection
                       </Text>
                     </View>
                   </View>
@@ -245,9 +245,9 @@ export default function PhilosopherGuideScreen() {
                     className="font-sans text-sm leading-relaxed"
                     style={{ color: theme.textSecondary }}
                   >
-                    Your chosen philosopher will speak through your Weekly AI Reflection.
-                    They'll analyze your entries and offer insights in their unique voice
-                    and philosophical perspective, helping you see your thoughts in new ways.
+                    Your chosen philosopher selects a curated voice and encouragement variant
+                    for your on-device weekly reflection, helping you revisit your thoughts
+                    through a different philosophical perspective.
                   </Text>
                 </View>
               </BlurView>

@@ -38,7 +38,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       backgroundColor: "#0F0F0E",
     },
     package: process.env.ANDROID_PACKAGE || "com.appfactory.oneprompt",
-    // @ts-expect-error edgeToEdgeEnabled is valid in Expo SDK 53+ but types lag behind
     edgeToEdgeEnabled: true,
   },
   web: {

@@ -466,7 +466,7 @@ export default function PaywallScreen() {
                 className="font-sans text-xs text-center mt-3 leading-relaxed px-4"
                 style={{ color: theme.textSecondary }}
               >
-                After your trial, your AI reflections and photo entries will be locked — but your words are always yours to keep.
+                After your trial, weekly reflections and photo entries will be locked — but your words are always yours to keep.
               </Text>
 
               {/* Legal Text */}

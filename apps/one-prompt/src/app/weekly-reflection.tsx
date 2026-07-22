@@ -16,61 +16,65 @@ import Animated, {
   runOnJS
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { z } from 'zod';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppTheme } from '@/lib/useAppTheme';
-import { useSettingsStore, PHILOSOPHERS, PhilosopherId, JOURNALING_GOALS, JournalingGoalId } from '@/lib/state/settings-store';
+import { useSettingsStore, PhilosopherId, JournalingGoalId } from '@/lib/state/settings-store';
 import { useJournalStore, JournalEntry } from '@/lib/state/journal-store';
 import { usePremiumStatus } from '@/lib/usePremium';
-import * as FileSystem from 'expo-file-system/legacy';
-import { supabase } from '@/lib/supabase';
+import {
+  generateLocalReflection,
+  LOCAL_REFLECTION_ENGINE_VERSION,
+  LocalReflection,
+  reflectionInputHash,
+} from '@/lib/local-reflection';
 
 const REFLECTION_CACHE_KEY = 'one_prompt_reflection_cache';
 
 interface ReflectionCache {
+  engineVersion: number;
   entriesHash: string;
   philosopher: string;
   goals: string[];
-  reflection: AIReflection;
+  variant: number;
+  reflection: LocalReflection;
   cachedAt: number;
 }
 
 function hashEntries(entries: JournalEntry[], philosopher: string, goals: string[]): string {
-  const key = entries
-    .map((e) => `${e.date}:${e.content}:${e.updatedAt}`)
-    .sort()
-    .join('|');
-  return `${key}__${philosopher}__${goals.sort().join(',')}`;
+  return reflectionInputHash(entries, philosopher as PhilosopherId, goals as JournalingGoalId[]);
 }
 
 async function loadCachedReflection(
   entries: JournalEntry[],
   philosopher: string,
   goals: string[]
-): Promise<AIReflection | null> {
+): Promise<ReflectionCache | null> {
   try {
     const raw = await AsyncStorage.getItem(REFLECTION_CACHE_KEY);
     if (!raw) return null;
     const cache = JSON.parse(raw) as ReflectionCache;
     const currentHash = hashEntries(entries, philosopher, goals);
-    if (cache.entriesHash !== currentHash) return null;
-    return cache.reflection;
+    if (cache.engineVersion !== LOCAL_REFLECTION_ENGINE_VERSION || cache.entriesHash !== currentHash) return null;
+    return cache;
   } catch {
     return null;
   }
 }
 
 async function saveReflectionCache(
-  reflection: AIReflection,
+  reflection: LocalReflection,
   entries: JournalEntry[],
   philosopher: string,
-  goals: string[]
+  goals: string[],
+  variant: number,
 ): Promise<void> {
   try {
     const cache: ReflectionCache = {
+      engineVersion: LOCAL_REFLECTION_ENGINE_VERSION,
       entriesHash: hashEntries(entries, philosopher, goals),
       philosopher,
       goals,
+      variant,
       reflection,
       cachedAt: Date.now(),
     };
@@ -81,34 +85,6 @@ async function saveReflectionCache(
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// Zod schema for validating AI reflection responses
-const AIReflectionSchema = z.object({
-  summary: z.string().min(1).max(2000),
-  theme: z.string().min(1).max(200),
-  mood: z.string().min(1).max(100),
-  encouragement: z.string().min(1).max(1000),
-  photoInsights: z.string().max(1000).optional(),
-});
-
-// Safe JSON parse helper with validation
-function safeParseAIResponse(text: string): z.infer<typeof AIReflectionSchema> | null {
-  try {
-    // Extract JSON from response text
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    const result = AIReflectionSchema.safeParse(parsed);
-
-    if (result.success) {
-      return result.data;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 // Helper to get the start of the current week (Sunday)
 function getWeekStart(date: Date): Date {
@@ -130,15 +106,6 @@ function formatDateRange(start: Date, end: Date): string {
     return `${startMonth} ${startDay} - ${endDay}`;
   }
   return `${startMonth} ${startDay} - ${endMonth} ${endDay}`;
-}
-
-interface AIReflection {
-  summary: string;
-  theme: string;
-  mood: string;
-  encouragement: string;
-  hasPhotos: boolean; // Indicates if this week included photo entries
-  photoInsights?: string; // AI analysis of photos
 }
 
 interface DailyMood {
@@ -371,289 +338,6 @@ function generateWeeklyMoodData(entries: JournalEntry[], weekStart: Date): Daily
   }
 
   return moods;
-}
-
-// Fallback reflection generator (used when API is unavailable)
-function generateFallbackReflection(entries: JournalEntry[]): AIReflection {
-  const hasPhotos = entries.some(e => e.photoUri);
-  const hasTextEntries = entries.some(e => e.content && e.content.trim().length > 0);
-  const photoCount = entries.filter(e => e.photoUri).length;
-
-  if (entries.length === 0) {
-    return {
-      summary: 'No entries this week yet. Start writing to see your weekly reflection.',
-      theme: 'New beginnings',
-      mood: 'Neutral',
-      encouragement: 'Every journey starts with a single thought. Write your first entry today.',
-      hasPhotos: false,
-    };
-  }
-
-  // For photo-only entries, provide different summaries
-  if (hasPhotos && !hasTextEntries) {
-    const photoSummaries: Record<number, string> = {
-      1: `You captured one moment through your lens this week. A single photo can hold a thousand words.`,
-      2: `Two photos captured this week. You're building a visual diary of meaningful moments.`,
-      3: `Three photo entries! You're documenting your journey through images.`,
-      4: `Four days of visual memories. Your photo journal is growing beautifully.`,
-      5: `Five photos captured this week. Each image tells a story.`,
-      6: `Six days of photo challenges completed! Almost a full week of visual reflection.`,
-      7: `A perfect week of photos! Seven captured moments show your dedication.`,
-    };
-
-    return {
-      summary: photoSummaries[Math.min(photoCount, 7)] || `${photoCount} photos captured this week.`,
-      theme: 'Visual Storytelling',
-      mood: 'Creative',
-      encouragement: 'Your photos capture moments words cannot. Keep seeing the world through your unique lens.',
-      hasPhotos: true,
-      photoInsights: `You captured ${photoCount} photo${photoCount > 1 ? 's' : ''} this week, each responding to a daily challenge.`,
-    };
-  }
-
-  const allContent = entries.filter(e => e.content).map((e) => e.content.toLowerCase()).join(' ');
-
-  const themes: Record<string, string[]> = {
-    'Growth & Learning': ['learn', 'grow', 'better', 'improve', 'new', 'discover', 'realize'],
-    'Gratitude': ['grateful', 'thankful', 'appreciate', 'blessed', 'lucky', 'happy'],
-    'Relationships': ['friend', 'family', 'love', 'together', 'connect', 'people', 'someone'],
-    'Work & Goals': ['work', 'goal', 'project', 'achieve', 'progress', 'finish', 'complete'],
-    'Self-Care': ['rest', 'relax', 'peace', 'calm', 'quiet', 'self', 'health'],
-    'Challenges': ['hard', 'difficult', 'challenge', 'struggle', 'tough', 'worry', 'stress'],
-    'Creativity': ['create', 'idea', 'inspire', 'art', 'write', 'make', 'build'],
-    'Nature & Peace': ['nature', 'walk', 'outside', 'sky', 'tree', 'garden', 'peaceful'],
-  };
-
-  let detectedTheme = 'Self-reflection';
-  let maxScore = 0;
-
-  for (const [theme, keywords] of Object.entries(themes)) {
-    const score = keywords.filter((k) => allContent.includes(k)).length;
-    if (score > maxScore) {
-      maxScore = score;
-      detectedTheme = theme;
-    }
-  }
-
-  const positiveWords = ['happy', 'good', 'great', 'love', 'joy', 'excited', 'wonderful', 'amazing', 'grateful', 'blessed'];
-  const negativeWords = ['sad', 'hard', 'difficult', 'stress', 'worry', 'tired', 'anxious', 'frustrated', 'angry', 'scared'];
-
-  const positiveCount = positiveWords.filter((w) => allContent.includes(w)).length;
-  const negativeCount = negativeWords.filter((w) => allContent.includes(w)).length;
-
-  let mood = 'Balanced';
-  if (positiveCount > negativeCount + 1) mood = 'Uplifted';
-  else if (negativeCount > positiveCount + 1) mood = 'Contemplative';
-  else if (positiveCount > 0 && negativeCount > 0) mood = 'Mixed emotions';
-
-  const summaries: Record<number, string> = {
-    1: `You captured one meaningful moment this week. "${entries[0].content.slice(0, 50)}${entries[0].content.length > 50 ? '...' : ''}"`,
-    2: `Two thoughtful entries this week. You're building a beautiful habit of reflection.`,
-    3: `Three entries captured! You're finding rhythm in daily reflection.`,
-    4: `Four days of thoughts recorded. Your consistency is inspiring.`,
-    5: `Five entries this week. You're deeply committed to understanding yourself.`,
-    6: `Six days of reflection! Almost a full week of mindful journaling.`,
-    7: `A perfect week! Seven entries show your dedication to self-awareness.`,
-  };
-
-  const summary = summaries[Math.min(entries.length, 7)] ||
-    `${entries.length} thoughtful entries this week. Your reflection practice is thriving.`;
-
-  const encouragements: Record<string, string> = {
-    'Growth & Learning': 'Your openness to growth is creating positive change. Keep learning.',
-    'Gratitude': 'A grateful heart sees beauty everywhere. Keep noticing the good.',
-    'Relationships': 'Connection is what makes life meaningful. Nurture those bonds.',
-    'Work & Goals': 'Progress comes one step at a time. You\'re on the right path.',
-    'Self-Care': 'Taking care of yourself enables you to care for others. Rest well.',
-    'Challenges': 'Challenges are opportunities in disguise. You\'re stronger than you know.',
-    'Creativity': 'Your creative spirit brings light to the world. Keep creating.',
-    'Nature & Peace': 'Finding peace in nature grounds us. Keep connecting with the world around you.',
-    'Self-reflection': 'Looking inward is the first step to growth. Keep exploring.',
-  };
-
-  return {
-    summary,
-    theme: detectedTheme,
-    mood,
-    encouragement: encouragements[detectedTheme] || encouragements['Self-reflection'],
-    hasPhotos,
-    photoInsights: hasPhotos ? `You also captured ${photoCount} photo${photoCount > 1 ? 's' : ''} this week.` : undefined,
-  };
-}
-
-// Get philosopher system prompt by ID
-function getPhilosopherPrompt(philosopherId: PhilosopherId): string {
-  const philosopher = PHILOSOPHERS.find(p => p.id === philosopherId);
-  return philosopher?.systemPrompt || PHILOSOPHERS[0].systemPrompt;
-}
-
-// Get goals context for AI prompts
-function getGoalsContext(goalIds: JournalingGoalId[]): string {
-  if (goalIds.length === 0) return '';
-
-  const goals = goalIds
-    .map(id => JOURNALING_GOALS.find(g => g.id === id))
-    .filter(Boolean)
-    .map(g => g!.name);
-
-  if (goals.length === 0) return '';
-
-  return `\n\nIMPORTANT: This person's journaling goals are: ${goals.join(', ')}. Please tailor your insights and encouragement to help them achieve these specific goals. Connect your observations to their stated intentions for journaling.`;
-}
-
-// Generate AI reflection using OpenAI API
-async function generateAIReflection(
-  entries: JournalEntry[],
-  philosopherId: PhilosopherId = 'none',
-  goalIds: JournalingGoalId[] = []
-): Promise<AIReflection> {
-  if (entries.length === 0) {
-    return generateFallbackReflection(entries);
-  }
-
-  try {
-    const hasPhotos = entries.some(e => e.photoUri);
-    const hasTextEntries = entries.some(e => e.content && e.content.trim().length > 0);
-    const photoEntries = entries.filter(e => e.photoUri);
-    const textEntries = entries.filter(e => e.content && e.content.trim().length > 0);
-
-    // If only photos (no text), use vision API to analyze photos
-    if (hasPhotos && !hasTextEntries) {
-      const philosopherPrompt = getPhilosopherPrompt(philosopherId);
-      const philosopherName = PHILOSOPHERS.find(p => p.id === philosopherId)?.name || 'a journaling companion';
-      const goalsContext = getGoalsContext(goalIds);
-
-      // Build content array with images for vision analysis
-      const imageContents: { type: string; text?: string; image_url?: { url: string } }[] = [
-        {
-          type: 'text',
-          text: `${philosopherPrompt}${goalsContext}
-
-This person has been capturing photos as part of their daily photo challenge journal. Analyze these ${photoEntries.length} photo(s) from the past week and provide a thoughtful visual reflection in your unique voice and perspective.
-
-For each photo, consider: What moment did they capture? What might this photo mean to them? What themes or patterns do you notice across the photos?
-
-Provide a JSON response with exactly these fields:
-- "summary": A warm, personal 2-3 sentence summary of what this week's photos reveal about what the person values or notices. Reference specific things you see in their photos. ${philosopherId !== 'none' ? `Write this in the voice and style of ${philosopherName}.` : ''}
-- "theme": The primary visual theme of this week (e.g., "Nature & Beauty", "Everyday Moments", "People & Connection", "Creative Expression", "Exploration", "Mindfulness", "Joy & Celebration"). Choose one that best captures the week.
-- "mood": The overall emotional tone conveyed by the photos (e.g., "Uplifted", "Serene", "Curious", "Joyful", "Reflective", "Adventurous")
-- "encouragement": A single, personalized sentence of encouragement based on what you observed in their photos. ${philosopherId !== 'none' ? `Write this as ${philosopherName} would say it, using their philosophical perspective.` : 'Make it feel like it\'s specifically for them.'}
-- "photoInsights": A 1-2 sentence observation about specific things you noticed in their photos.
-
-Respond ONLY with valid JSON, no other text.`
-        }
-      ];
-
-      // Add photos as base64 images (local file URIs only — cloud-synced entries
-      // replace photoUri with remote https:// signed URLs that FileSystem cannot read).
-      for (const entry of photoEntries) {
-        if (entry.photoUri && (entry.photoUri.startsWith('file://') || entry.photoUri.startsWith('content://'))) {
-          try {
-            const base64 = await FileSystem.readAsStringAsync(entry.photoUri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            imageContents.push({
-              type: 'image_url',
-              image_url: {
-                url: `data:image/jpeg;base64,${base64}`
-              }
-            });
-          } catch {
-            // Photo read failed, skip this photo
-          }
-        }
-      }
-
-      const { data: visionResult, error: visionError } = await supabase.functions.invoke('generate-reflection', {
-        body: {
-          model: 'gpt-4o',
-          messages: [{ role: 'user', content: imageContents }],
-          max_tokens: 500,
-        },
-      });
-
-      if (!visionError && visionResult) {
-        const visionText = visionResult.choices?.[0]?.message?.content || '';
-        const parsed = safeParseAIResponse(visionText);
-        if (parsed) {
-          return {
-            summary: parsed.summary,
-            theme: parsed.theme,
-            mood: parsed.mood,
-            encouragement: parsed.encouragement,
-            hasPhotos: true,
-            photoInsights: parsed.photoInsights || `You captured ${photoEntries.length} photo${photoEntries.length > 1 ? 's' : ''} this week.`,
-          };
-        }
-      }
-
-      // Fallback if vision API fails
-      return generateFallbackReflection(entries);
-    }
-
-    // Format text entries for the prompt (original behavior for text entries)
-    const entriesText = textEntries
-      .map((e) => {
-        const date = new Date(e.date + 'T00:00:00');
-        const formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-        return `${formattedDate}:\nPrompt: "${e.prompt}"\nThought: "${e.content}"`;
-      })
-      .join('\n\n');
-
-    const photoNote = hasPhotos ? `\n\nNote: This person also captured ${photoEntries.length} photo${photoEntries.length > 1 ? 's' : ''} as part of their photo challenge this week.` : '';
-
-    const philosopherPrompt = getPhilosopherPrompt(philosopherId);
-    const philosopherName = PHILOSOPHERS.find(p => p.id === philosopherId)?.name || 'a journaling companion';
-    const goalsContext = getGoalsContext(goalIds);
-
-    const prompt = `${philosopherPrompt}${goalsContext}
-
-Analyze these journal entries from the past week and provide a thoughtful reflection in your unique voice and perspective.
-
-Journal Entries:
-${entriesText}${photoNote}
-
-Provide a JSON response with exactly these fields:
-- "summary": A warm, personal 2-3 sentence summary of what this week's entries reveal about the person's inner life. Reference specific themes or moments from their entries. ${philosopherId !== 'none' ? `Write this in the voice and style of ${philosopherName}.` : ''}
-- "theme": The primary theme or focus of this week (e.g., "Growth & Learning", "Gratitude", "Relationships", "Self-Care", "Creativity", "Challenges", "Peace & Nature"). Choose one that best captures the week.
-- "mood": The overall emotional tone (e.g., "Uplifted", "Reflective", "Balanced", "Contemplative", "Hopeful", "Mixed emotions")
-- "encouragement": A single, personalized sentence of encouragement based on what you observed in their entries. ${philosopherId !== 'none' ? `Write this as ${philosopherName} would say it, using their philosophical perspective to challenge and inspire growth.` : 'Make it feel like it\'s specifically for them.'}
-
-Respond ONLY with valid JSON, no other text.`;
-
-    // Use correct OpenAI chat completions endpoint
-    const { data, error: fnError } = await supabase.functions.invoke('generate-reflection', {
-      body: {
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 500,
-      },
-    });
-
-    if (fnError || !data) {
-      return generateFallbackReflection(entries);
-    }
-
-    const outputText = data.choices?.[0]?.message?.content || '';
-    const photoCount = photoEntries.length;
-
-    // Use safe parser with Zod validation
-    const parsed = safeParseAIResponse(outputText);
-    if (parsed) {
-      return {
-        summary: parsed.summary,
-        theme: parsed.theme,
-        mood: parsed.mood,
-        encouragement: parsed.encouragement,
-        hasPhotos,
-        photoInsights: parsed.photoInsights || (hasPhotos ? `You captured ${photoCount} photo${photoCount > 1 ? 's' : ''} this week.` : undefined),
-      };
-    }
-
-    return generateFallbackReflection(entries);
-  } catch {
-    return generateFallbackReflection(entries);
-  }
 }
 
 // Mood Graph Component with swipe navigation
@@ -952,7 +636,7 @@ export default function WeeklyReflectionScreen() {
   const { isPremium } = usePremiumStatus();
 
   const [isGenerating, setIsGenerating] = useState(true);
-  const [reflection, setReflection] = useState<AIReflection | null>(null);
+  const [reflection, setReflection] = useState<LocalReflection | null>(null);
   const [canRefresh, setCanRefresh] = useState(false);
   const [moodExpanded, setMoodExpanded] = useState(false);
 
@@ -1010,23 +694,22 @@ export default function WeeklyReflectionScreen() {
     setIsGenerating(true);
     setCanRefresh(false);
 
-    if (!forceRefresh) {
-      const cached = await loadCachedReflection(weekData.entries, selectedPhilosopher, journalingGoals);
-      if (cached) {
-        setReflection(cached);
+    const cached = await loadCachedReflection(weekData.entries, selectedPhilosopher, journalingGoals);
+    if (!forceRefresh && cached) {
+        setReflection(cached.reflection);
         setIsGenerating(false);
         setCanRefresh(true);
         return;
-      }
     }
 
-    const result = await generateAIReflection(weekData.entries, selectedPhilosopher, journalingGoals);
+    const variant = forceRefresh ? (cached?.variant ?? -1) + 1 : 0;
+    const result = generateLocalReflection(weekData.entries, selectedPhilosopher, journalingGoals, variant);
     setReflection(result);
     setIsGenerating(false);
     setCanRefresh(true);
 
     // Persist for next visit (fire-and-forget)
-    saveReflectionCache(result, weekData.entries, selectedPhilosopher, journalingGoals);
+    saveReflectionCache(result, weekData.entries, selectedPhilosopher, journalingGoals, variant);
 
     if (hapticEnabled) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1062,14 +745,14 @@ export default function WeeklyReflectionScreen() {
   const previewReflection = useMemo(() => {
     if (weekData.entries.length === 0) {
       return {
-        summary: 'Start writing daily thoughts to unlock personalized AI insights about your week.',
+        summary: 'Start writing daily thoughts to unlock your personalized weekly reflection.',
         theme: 'New beginnings',
         mood: 'Hopeful',
         encouragement: 'Every journey begins with a single thought.',
       };
     }
-    return generateFallbackReflection(weekData.entries);
-  }, [weekData.entries]);
+    return generateLocalReflection(weekData.entries, selectedPhilosopher, journalingGoals);
+  }, [weekData.entries, selectedPhilosopher, journalingGoals]);
 
   // Show blurred preview for non-premium users
   if (!isPremium) {
@@ -1441,7 +1124,7 @@ export default function WeeklyReflectionScreen() {
                       className="font-sans text-sm text-center mb-5 leading-relaxed"
                       style={{ color: theme.textSecondary }}
                     >
-                      Get AI-powered analysis of your thoughts, personalized encouragement, and deeper self-understanding.
+                      Get an on-device summary of your thoughts, personalized encouragement, and deeper self-understanding.
                     </Text>
 
                     <Pressable onPress={handleUpgrade} accessibilityLabel="Upgrade to Pro" className="w-full">
@@ -1533,8 +1216,8 @@ export default function WeeklyReflectionScreen() {
                 <ActivityIndicator size="large" color={theme.accent} />
                 <Text className="font-sans text-base mt-4" style={{ color: theme.textSecondary }}>
                   {selectedPhilosopher !== 'none'
-                    ? `${PHILOSOPHERS.find(p => p.id === selectedPhilosopher)?.name} is gathering your insights...`
-                    : 'Gathering your insights...'}
+                    ? 'Applying your guide to a local reflection...'
+                    : 'Preparing your local reflection...'}
                 </Text>
               </Animated.View>
             ) : reflection ? (
@@ -1589,7 +1272,7 @@ export default function WeeklyReflectionScreen() {
                         className="font-sans text-xs mt-3 leading-relaxed"
                         style={{ color: theme.textMuted }}
                       >
-                        AI-generated · may be inaccurate. In a crisis, contact a mental health professional or text HOME to 741741.
+                        Created on your device from your entries. In a crisis, contact a mental health professional or text HOME to 741741.
                       </Text>
                     </View>
                   </BlurView>

@@ -51,7 +51,7 @@ Refunds: Refund requests are handled by Apple according to their policies.
 
 Ownership: You retain all rights to the content you create in the App.
 
-Privacy: Your journal entries are stored locally on your device. We do not access or read your personal content, except when you explicitly use the AI Reflections feature (premium), which sends that week's entries to OpenAI for processing.
+Privacy: Your journal entries are stored locally on your device. Weekly reflections are calculated on your device from that week's entries; the feature does not send journal content to a reflection service.
 
 Backup: If you enable cloud sync, your data is encrypted and stored securely.
 
@@ -121,7 +121,7 @@ Data We Do NOT Collect:
 Note on Journal Content:
 - By default, journal entries are stored locally on your device only
 - If you enable Cloud Sync (requires sign-in), your entries are also stored securely on our servers (Supabase) to enable cross-device access and backup
-- AI Reflections (premium feature) sends that week's entries to OpenAI for processing
+- Weekly reflections are calculated on-device from that week's entries
 
 2. HOW WE USE YOUR INFORMATION
 
@@ -131,24 +131,9 @@ We use collected information to:
 - Improve app performance and features
 - Send notifications (only if you enable them)
 
-3. AI-POWERED FEATURES (IMPORTANT)
+3. ON-DEVICE WEEKLY REFLECTIONS
 
-Weekly Reflections Feature:
-If you are a premium subscriber and use the AI-powered weekly reflections feature, your journal entries from that week may be sent to OpenAI's servers for processing. This includes:
-- The text content of your journal entries
-- Photos you've taken as part of photo prompts (if applicable)
-
-What this means:
-- Your journal content is transmitted securely via HTTPS
-- OpenAI processes your entries to generate personalized insights
-- We do not retain your entries in our AI pipeline beyond the processing request
-- OpenAI's data retention policies apply (see openai.com/privacy)
-
-You can opt out:
-- Simply don't use the weekly reflections feature
-- Your entries will remain local on your device
-
-By using the AI reflections feature, you consent to this data processing.
+Weekly reflections are a premium feature calculated on your device from the text, entry dates, selected goals, and selected philosopher guide already stored in the App. They do not send journal text or photo content to a reflection provider. Photo reflections use the number of photos recorded that week and do not inspect image content.
 
 4. DATA STORAGE
 
@@ -169,10 +154,6 @@ RevenueCat: For subscription management
 Apple (Sign in with Apple): For optional authentication
 - Privacy Policy: https://www.apple.com/legal/privacy
 
-OpenAI: For AI-powered reflections (premium feature only)
-- Privacy Policy: https://openai.com/privacy
-- Data is processed per OpenAI's API data usage policies
-
 PostHog: For anonymous analytics (crash counts, feature usage patterns, no journal content)
 - Privacy Policy: https://posthog.com/privacy
 - Data is anonymized and linked to a random device UUID, not your identity
@@ -186,7 +167,6 @@ We do not sell, trade, or share your personal data with third parties except:
 - When required by law
 - To protect our rights or safety
 - With service providers who assist in operating the App (under strict confidentiality)
-- With OpenAI for AI reflection features (with your consent)
 
 7. DATA RETENTION
 
@@ -196,15 +176,13 @@ Account Data: If you create an account, we retain your data until you request de
 
 Subscription Data: Retained as required for billing and legal compliance.
 
-AI Processing: Data sent to OpenAI is subject to their retention policies.
-
 8. YOUR RIGHTS
 
 You have the right to:
 - Access your data (via export feature)
 - Delete your data (via app settings)
 - Opt out of analytics
-- Opt out of AI features by not using weekly reflections
+- Use or avoid weekly reflections at your discretion; the calculation remains on your device
 - Cancel your subscription at any time
 
 9. CHILDREN'S PRIVACY
@@ -216,7 +194,7 @@ The App is not intended for children under 13. We do not knowingly collect data 
 We implement appropriate security measures including:
 - Local data encryption using secure storage
 - Secure cloud transmission (HTTPS)
-- Validated API responses
+- Input validation and local storage safeguards
 - Input sanitization
 
 11. NOTIFICATIONS
@@ -240,7 +218,7 @@ California residents have additional rights:
 14. EUROPEAN USERS (GDPR)
 
 For EU users, our legal basis for processing is:
-- Consent (for optional features like AI reflections)
+- Contract performance (for optional subscription features)
 - Contract performance (for subscription services)
 - Legitimate interests (for app improvement)
 
@@ -272,15 +250,9 @@ If you are experiencing a mental health crisis, please contact:
 - Crisis Text Line: Text HOME to 741741
 - Your local mental health professional
 
-2. AI-GENERATED CONTENT DISCLAIMER
+2. WEEKLY REFLECTIONS DISCLAIMER
 
-The AI Reflections feature (premium) generates content using OpenAI's language models. This content:
-- May be inaccurate, incomplete, or not applicable to your situation
-- Is generated by an automated system with no human oversight
-- Should not be used as a substitute for professional advice
-- May occasionally produce unexpected or unhelpful responses
-
-AI-generated reflections are meant as a starting point for self-reflection only. If the AI response feels inaccurate or unhelpful, please disregard it. In a mental health crisis, do not rely on AI-generated content — contact a professional immediately (see Section 1 above).
+Weekly reflections are deterministic, on-device summaries based on patterns in the entries you choose to record. They may be incomplete or not useful for your situation, have no human oversight, and are not professional advice. Please disregard any reflection that does not fit your experience. In a mental health crisis, contact a professional immediately (see Section 1 above).
 
 3. NO MEDICAL ADVICE
 

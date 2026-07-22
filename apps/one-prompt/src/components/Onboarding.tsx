@@ -928,7 +928,7 @@ function GoalsScreen({ onNext }: { onNext: () => void }) {
         className="font-sans text-xs text-center mt-4 px-4"
         style={{ color: theme.textMuted }}
       >
-        Your goals help personalize your AI insights
+        Your goals help personalize your weekly reflection
       </Animated.Text>
 
       <View className="items-center pt-6 pb-4">

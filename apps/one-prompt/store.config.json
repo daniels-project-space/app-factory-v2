@@ -13,9 +13,9 @@
     "marketingUrl": "https://oneprompt.app",
     "copyright": "2026 OnePrompt",
     "locale": "en-US",
-    "promotionalText": "Write one sentence a day. Seal it. Rediscover it. AI reflections, time capsules, and 1,400+ prompts \u2014 the mindfulness journal that fits any life.",
-    "whatsNew": "First release of OnePrompt! Write one thought per day with guided prompts, send sealed entries to your future self with time capsule reveals, and unlock weekly AI insights with a philosopher guide. Free to start \u2014 go premium for AI reflections, photo journaling, mood tracking, and custom prompts.",
-    "description": "One thought a day. That's all it takes.\n\nOnePrompt is the mindful journaling app that makes consistency effortless. Each day, you get a single prompt. You write one sentence. You send it sealed into the future.\n\nWhen the time capsule opens, you see exactly who you were.\n\n\u2014 WRITE LESS. REMEMBER MORE \u2014\nInstant journaling: one sentence, 150 characters. No pressure, no blank pages, no perfectionism.\n\n\u2014 TIME CAPSULE REVEALS \u2014\nSeal your thoughts for tomorrow, next week, or next month. Watch them unlock like letters to yourself.\n\n\u2014 1,400+ DAILY PROMPTS \u2014\n7 categories (Gratitude, Growth, Relationships, Creativity, Mindfulness, Reflection, Self-Discovery), 200 prompts each. A different spark every day.\n\n\u2014 STREAK TRACKING \u2014\nBuild a journaling habit you'll actually keep. See your current and longest streaks at a glance.\n\n\u2014 9 COLOUR THEMES \u2014\nClassic Blue, Mint Calm, Lavender Focus, Sunset Warm, Mono Minimal, Midnight Blue, and more. Light and dark mode.\n\n\u2014 PREMIUM: AI REFLECTIONS \u2014\nWeekly AI-powered insights from your entries. Choose a philosopher guide \u2014 Nietzsche, Marcus Aurelius, Plato, Schiller, or Camus \u2014 to challenge and inspire you.\n\n\u2014 PREMIUM: PHOTO JOURNALING \u2014\nSwitch to daily photo prompts. Capture a moment. Seal it. Reveal it.\n\n\u2014 PREMIUM: MOOD TRACKING \u2014\nLog your mood with each entry and watch patterns emerge over time.\n\n\u2014 PREMIUM: CUSTOM PROMPTS \u2014\nWrite your own prompts and add them to the daily rotation.",
+    "promotionalText": "Write one sentence a day. Seal it. Rediscover it. Local weekly reflections, time capsules, and 1,400+ prompts.",
+    "whatsNew": "Write one thought per day with guided prompts, time capsule reveals, and on-device weekly reflections with a philosopher guide. Free to start; premium adds reflections, photo journaling, mood tracking, and custom prompts.",
+    "description": "One thought a day. That's all it takes.\n\nOnePrompt is a mindful journal for a small daily practice. Write one sentence, seal it for later, and rediscover who you were.\n\n— WRITE LESS. REMEMBER MORE —\nDaily prompts, time capsules, streaks, and nine colour themes keep journaling simple.\n\n— PREMIUM: ON-DEVICE WEEKLY REFLECTIONS —\nSee a local weekly summary, theme, mood, encouragement, and photo count. Choose a philosopher guide — Nietzsche, Marcus Aurelius, Plato, Schiller, or Camus — and journaling goals to select curated variants. Your journal content stays on your device.\n\n— PREMIUM: PHOTO JOURNALING, MOOD TRACKING, AND CUSTOM PROMPTS —\nCapture a daily photo, log moods, and add your own prompts.",
     "inAppPurchases": [
       {
         "referenceName": "OnePrompt+ Monthly",
@@ -24,7 +24,7 @@
         "price": 2.99,
         "currency": "GBP",
         "duration": "1 month",
-        "description": "AI weekly reflections, philosopher guides, photo journaling, mood tracking, custom prompts, fireplace background, background music, PDF export"
+        "description": "On-device weekly reflections, philosopher guides, photo journaling, mood tracking, custom prompts, fireplace background, background music, PDF export"
       },
       {
         "referenceName": "OnePrompt+ Annual",
@@ -47,7 +47,7 @@
       ]
     },
     "appIcon": "assets/icon.png",
-    "reviewNotes": "OnePrompt is a personal journaling app. Users write one sentence per day with AI-generated prompts, and can seal entries as time capsules (revealed after a user-chosen delay). AI weekly reflections use OpenAI (GPT-4o/GPT-4o-mini) via a Supabase Edge Function on the user's own journal data \u2014 no third-party sharing. Photo journaling uses the device camera with explicit permission. Background music plays ambient tracks bundled in the app. RevenueCat handles subscription management for the premium tier. The app works fully offline; cloud sync is optional and requires sign-in.",
+    "reviewNotes": "OnePrompt is a personal journaling app. Users write one sentence per day with curated prompts and can seal entries as time capsules. Premium weekly reflections are deterministic and calculated on-device from the week's entries, selected goals, and philosopher guide; no journal content is sent to a reflection provider. Photo reflections count photo entries without inspecting image content. Photo journaling uses the device camera with explicit permission. RevenueCat handles subscriptions. The app works offline; cloud sync is optional and requires sign-in.",
     "privacyChoices": {
       "dataCollected": [
         {
@@ -77,13 +77,6 @@
           "linked": false,
           "tracking": false,
           "description": "Crash reports via Sentry for stability improvements \u2014 no PII"
-        },
-        {
-          "type": "User Content",
-          "purpose": "App Functionality",
-          "linked": true,
-          "tracking": false,
-          "description": "Journal entries sent to OpenAI via Supabase Edge Function for AI Reflection (premium feature, user-initiated only). OpenAI is a subprocessor; data is not retained for model training per OpenAI API policy."
         }
       ],
       "noThirdPartySharing": false,
@@ -95,6 +88,6 @@
     "primaryCategory": "LIFESTYLE",
     "contentRating": "Everyone",
     "shortDescription": "Write one sentence a day. Seal it. Rediscover it.",
-    "fullDescription": "One thought a day. That's all it takes.\n\nOnePrompt is the mindful journaling app that makes consistency effortless. Each day, you get a single prompt. You write one sentence. You send it sealed into the future.\n\nWhen the time capsule opens, you see exactly who you were.\n\n\u2605 WRITE LESS. REMEMBER MORE\nInstant journaling: one sentence, 150 characters. No pressure, no blank pages, no perfectionism.\n\n\u2605 TIME CAPSULE REVEALS\nSeal your thoughts for tomorrow, next week, or next month. Watch them unlock like letters to yourself.\n\n\u2605 1,400+ DAILY PROMPTS\n7 categories (Gratitude, Growth, Relationships, Creativity, Mindfulness, Reflection, Self-Discovery), 200 prompts each.\n\n\u2605 STREAK TRACKING\nBuild a journaling habit you'll actually keep.\n\n\u2605 9 COLOUR THEMES + DARK MODE\nClassic Blue, Mint Calm, Lavender Focus, Sunset Warm, Midnight Blue, and more.\n\n\u2605 PREMIUM: AI REFLECTIONS\nWeekly AI-powered insights. Choose a philosopher guide \u2014 Nietzsche, Marcus Aurelius, Plato, Schiller, or Camus.\n\n\u2605 PREMIUM: PHOTO JOURNALING\nCapture a daily photo prompt. Seal it. Reveal it.\n\n\u2605 PREMIUM: MOOD TRACKING\nLog your mood and watch patterns emerge.\n\n\u2605 PREMIUM: CUSTOM PROMPTS\nWrite your own prompts and add them to the daily rotation.\n\nFree to start. Go premium for AI, photos, and mood \u2014 from \u00a31.67/month."
+    "fullDescription": "One thought a day. That's all it takes.\n\nOnePrompt is a mindful journal with daily prompts, time capsules, streaks, and colour themes.\n\n★ PREMIUM: ON-DEVICE WEEKLY REFLECTIONS\nSee a local weekly summary, theme, mood, encouragement, and photo count. Choose a philosopher guide and journaling goals for curated variants. Journal content stays on your device.\n\n★ PREMIUM: PHOTO JOURNALING, MOOD TRACKING, AND CUSTOM PROMPTS\nCapture a daily photo prompt, track moods, and add your own prompts.\n\nFree to start. Premium adds reflections, photos, and mood tracking — from £1.67/month."
   }
 }
