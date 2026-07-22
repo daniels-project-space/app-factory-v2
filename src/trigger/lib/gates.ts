@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { sh, npx } from "./shell";
+import { formatOpenAiApiPolicyViolations, scanOpenAiApiPolicy } from "./openai-api-policy";
 
 /**
  * Deterministic quality gates. These are EXECUTED BEHAVIOR, not grep-theater:
@@ -24,7 +25,21 @@ export type GateResult = {
 export async function runGates(dir: string): Promise<GateResult> {
   const issues: GateIssue[] = [];
 
-  // 1. TypeScript — blocking.
+  // 1. No OpenAI API path or instruction may enter a generated app. This is
+  // intentionally first and scans dotfiles, docs, SQL, templates, and Forge
+  // imports before any executable quality check can mask the policy failure.
+  const policyViolations = scanOpenAiApiPolicy(dir);
+  if (policyViolations.length > 0) {
+    issues.push({
+      fingerprint: "gate:openai-api-policy",
+      severity: "P0",
+      source: "gate",
+      title: `OpenAI API policy violation in ${policyViolations.length} location(s)`,
+      detail: formatOpenAiApiPolicyViolations(policyViolations),
+    });
+  }
+
+  // 2. TypeScript — blocking.
   const tsc = await npx(["tsc", "--noEmit"], { cwd: dir, timeoutMs: 5 * 60 * 1000 });
   if (tsc.code !== 0) {
     issues.push({
@@ -36,7 +51,7 @@ export async function runGates(dir: string): Promise<GateResult> {
     });
   }
 
-  // 2. Placeholder scan — blocking (v1's zero-placeholder policy, kept).
+  // 3. Placeholder scan — blocking (v1's zero-placeholder policy, kept).
   const bad = scanPlaceholders(dir);
   if (bad.length > 0) {
     issues.push({
@@ -48,7 +63,7 @@ export async function runGates(dir: string): Promise<GateResult> {
     });
   }
 
-  // 3. Expo web export — blocking. The demo artifact must exist.
+  // 4. Expo web export — blocking. The demo artifact must exist.
   let exportDir: string | undefined;
   if (issues.length === 0) {
     const exp = await npx(["expo", "export", "--platform", "web", "--output-dir", "dist"], {

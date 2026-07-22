@@ -23,6 +23,8 @@ const TOKEN_DISCIPLINE = `TOKEN DISCIPLINE (context is a budget):
 - Never run expo start/export, git, or npm install — the harness owns those. Run "npx tsc --noEmit" in batches (after every 4-5 files), not per file.
 - No exploratory codebase walks: read only the files your current task names or imports directly.`;
 
+const PROVIDER_POLICY = `PROVIDER POLICY (non-negotiable): never add, configure, document, or suggest an OpenAI API key, OpenAI API host/SDK, or any metered model-provider API as a substitute. Do not add an alternate paid-provider fallback. Preserve behavior with deterministic/local code where possible; otherwise report the path as blocked for an explicit architecture decision. The harness alone may use its subscription-authenticated Codex CLI where available; do not try to recreate that capability inside an app or Edge Function.`;
+
 // Provider-neutral instruction registry. The Claude adapter consumes these via
 // sdkOptions; the Codex adapter uses the same text as the headless CLI preamble.
 export const AGENT_INSTRUCTIONS: Record<string, string> = {};
@@ -34,7 +36,8 @@ function coding(opts: {
   model: string;
   maxTurns: number;
 }) {
-  AGENT_INSTRUCTIONS[opts.id] = opts.append;
+  const instructions = `${opts.append}\n${PROVIDER_POLICY}`;
+  AGENT_INSTRUCTIONS[opts.id] = instructions;
   return new ClaudeSDKAgent({
     id: opts.id,
     name: opts.id,
@@ -43,7 +46,7 @@ function coding(opts: {
       model: opts.model,
       maxTurns: opts.maxTurns,
       permissionMode: "bypassPermissions",
-      systemPrompt: { type: "preset", preset: "claude_code", append: opts.append },
+      systemPrompt: { type: "preset", preset: "claude_code", append: instructions },
     },
   });
 }
@@ -56,7 +59,8 @@ function thinking(opts: {
   maxTurns: number;
   allowedTools?: string[];
 }) {
-  AGENT_INSTRUCTIONS[opts.id] = opts.system;
+  const instructions = `${opts.system}\n${PROVIDER_POLICY}`;
+  AGENT_INSTRUCTIONS[opts.id] = instructions;
   return new ClaudeSDKAgent({
     id: opts.id,
     name: opts.id,
@@ -65,7 +69,7 @@ function thinking(opts: {
       model: opts.model,
       maxTurns: opts.maxTurns,
       permissionMode: "bypassPermissions",
-      systemPrompt: opts.system,
+      systemPrompt: instructions,
       ...(opts.allowedTools ? { allowedTools: opts.allowedTools } : {}),
     },
   });

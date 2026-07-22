@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, rmSync, cpSync, readFileSync, writeFileSync } fr
 import { join } from "node:path";
 import { sh } from "./shell";
 import { REPO } from "@/factory/config";
+import { formatOpenAiApiPolicyViolations, scanOpenAiApiPolicy } from "./openai-api-policy";
 
 const WS = "/tmp/factory";
 
@@ -109,6 +110,13 @@ export async function ensureDeps(dir: string): Promise<void> {
 
 /** Commit everything under the app folder and push, rebase-retrying once. */
 export async function commitAndPush(repo: string, slug: string, message: string) {
+  const dir = appDir(repo, slug);
+  const policyViolations = scanOpenAiApiPolicy(dir);
+  if (policyViolations.length > 0) {
+    throw new Error(
+      `OpenAI API policy blocked commit for ${REPO.appsDir}/${slug}:\n${formatOpenAiApiPolicyViolations(policyViolations)}`,
+    );
+  }
   await sh("git", ["-C", repo, "add", `${REPO.appsDir}/${slug}`]);
   const status = await sh("git", ["-C", repo, "status", "--porcelain"]);
   if (status.stdout.trim()) {
