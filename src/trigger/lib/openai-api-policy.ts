@@ -1,23 +1,6 @@
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 
-/**
- * Files which cannot be committed by the factory. Everything else, including
- * dot-directories, documentation, SQL, templates, and Forge imports is read.
- * This deliberately does not use an extension allow-list: policy instructions
- * are often hidden in markdown, shell files, or otherwise non-code content.
- */
-const UNTRACKED_DIRECTORIES = new Set([
-  ".git",
-  ".expo",
-  ".next",
-  "build",
-  "coverage",
-  "dist",
-  "node_modules",
-  "out",
-]);
-
 export type OpenAiApiPolicyViolation = {
   rule: "host" | "sdk" | "key" | "instruction";
   path: string;
@@ -87,9 +70,15 @@ function scanText(root: string, file: string, text: string): OpenAiApiPolicyViol
 }
 
 /**
- * Scan the complete, committable app tree. This works before `git add`, so a
- * new hidden instruction or a file copied from a Forge source cannot evade the
- * policy merely because it is currently untracked.
+ * Scan the complete app tree that could be staged by the factory. This works
+ * before `git add`, so a new hidden instruction, generated build artifact, or
+ * file copied from a Forge source cannot evade the policy merely because it is
+ * currently untracked. Only Git's own metadata is excluded: it is outside the
+ * app payload and `git add apps/<slug>` can never stage it.
+ *
+ * Deliberately do not use an extension or output-directory allow-list. Policy
+ * instructions can live in markdown, shell files, docs, SQL, templates, or
+ * generated `dist`/`build`/`out` files.
  */
 export function scanOpenAiApiPolicy(root: string): OpenAiApiPolicyViolation[] {
   const resolvedRoot = resolve(root);
@@ -98,7 +87,7 @@ export function scanOpenAiApiPolicy(root: string): OpenAiApiPolicyViolation[] {
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if (entry.isDirectory()) {
-        if (!UNTRACKED_DIRECTORIES.has(entry.name)) walk(`${dir}/${entry.name}`);
+        if (entry.name !== ".git") walk(`${dir}/${entry.name}`);
         continue;
       }
       if (!entry.isFile()) continue;

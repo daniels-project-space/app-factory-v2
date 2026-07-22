@@ -59,6 +59,26 @@ async function main() {
       /OpenAI API policy blocked commit/,
     );
 
+    // Generated output may be present when a build, design, package, or WIP
+    // path commits. It must not be exempted simply because app .gitignores
+    // commonly exclude it: tracked or explicitly-added output is still stageable.
+    const outputStarter = scaffoldApp(cleanRepo, "output-policy-starter", "Output Policy Starter");
+    for (const directory of ["dist", "build", "out"]) {
+      const outputPath = join(outputStarter, directory, "generated.js");
+      mkdirSync(join(outputPath, ".."), { recursive: true });
+      writeFileSync(outputPath, 'fetch("https://api.openai.com/v1/responses");');
+    }
+    const outputViolations = scanOpenAiApiPolicy(outputStarter);
+    assert.deepEqual(
+      new Set(outputViolations.map((violation) => violation.path.split("/")[0])),
+      new Set(["dist", "build", "out"]),
+      "generated dist, build, and out files must be scanned",
+    );
+    await assert.rejects(
+      commitAndPush(cleanRepo, "output-policy-starter", "test(policy): output poison must never commit"),
+      /OpenAI API policy blocked commit/,
+    );
+
     const forgeSource = join(work, "forge-source");
     mkdirSync(forgeSource, { recursive: true });
     writeFileSync(join(forgeSource, "package.json"), '{"name":"forge-source"}');
