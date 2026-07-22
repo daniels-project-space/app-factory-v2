@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
-import { sh, npx } from "./shell";
+import { npx } from "./shell";
 import { formatOpenAiApiPolicyViolations, scanOpenAiApiPolicy } from "./openai-api-policy";
 
 /**

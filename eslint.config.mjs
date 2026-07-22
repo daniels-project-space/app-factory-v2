@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Committed generated Expo applications and the starter are independently
+    // configured and validated from their own project roots. Applying the
+    // Next.js production app rules here made the root command lint unrelated
+    // mobile code with a mismatched React configuration.
+    "apps/**",
+    "templates/**",
+    "convex/_generated/**",
   ]),
 ]);
 
