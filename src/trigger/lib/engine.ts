@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import type { ClaudeSDKAgent } from "@mastra/claude";
@@ -66,59 +67,111 @@ function resolveCodexBin(): string | null {
   }
 }
 
-function codexEnv(runId: string): NodeJS.ProcessEnv {
-  const home = `/tmp/codex-home-${runId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
-  mkdirSync(home, { recursive: true });
+type CodexLaunch = {
+  env: NodeJS.ProcessEnv;
+  home: string;
+  cleanup: () => void;
+};
+
+/**
+ * The controller deliberately supplies only the serialized ChatGPT
+ * subscription session. API keys, raw tokens, and all other worker secrets
+ * are rejected instead of being allowed to influence Codex authentication.
+ */
+function codexSubscriptionAuth(): string {
   const encoded = process.env.CODEX_AUTH_JSON_B64;
-  const raw = process.env.CODEX_AUTH_JSON;
-  if (encoded || raw) {
-    const json = encoded ? Buffer.from(encoded, "base64").toString("utf8") : raw!;
-    JSON.parse(json);
-    const authPath = join(home, "auth.json");
-    writeFileSync(authPath, json, { mode: 0o600 });
-    chmodSync(authPath, 0o600);
+  if (!encoded) throw new Error("Codex subscription auth is not configured");
+
+  let json: string;
+  try {
+    json = Buffer.from(encoded, "base64").toString("utf8");
+    const parsed: unknown = JSON.parse(json);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object");
+  } catch {
+    throw new Error("Codex subscription auth is invalid");
   }
-  if (!process.env.CODEX_ACCESS_TOKEN && !encoded && !raw) throw new Error("Codex subscription auth is not configured");
-  return { ...process.env, HOME: home, CODEX_HOME: home, OPENAI_API_KEY: "", CODEX_API_KEY: "" };
+  return json;
+}
+
+function codexLaunch(): CodexLaunch {
+  const json = codexSubscriptionAuth();
+  const home = mkdtempSync(join(tmpdir(), "factory-codex-auth-"));
+  const authPath = join(home, "auth.json");
+  writeFileSync(authPath, json, { mode: 0o600 });
+  chmodSync(authPath, 0o600);
+  // Keep this in the isolated home as defense in depth. The argv override in
+  // codexGenerate makes the same policy explicit to the launched CLI.
+  writeFileSync(join(home, "config.toml"), 'forced_login_method = "chatgpt"\n', { mode: 0o600 });
+
+  // Never spread process.env here. A Trigger worker has deployment and
+  // provider credentials that neither Codex nor its subprocesses need.
+  const env = {
+    PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
+    HOME: home,
+    CODEX_HOME: home,
+    TMPDIR: process.env.TMPDIR ?? tmpdir(),
+    LANG: process.env.LANG ?? "C.UTF-8",
+    NODE_ENV: process.env.NODE_ENV ?? "production",
+    OPENAI_API_KEY: "",
+    CODEX_API_KEY: "",
+  };
+  return { env, home, cleanup: () => rmSync(home, { recursive: true, force: true }) };
 }
 
 async function codexGenerate<S extends z.ZodTypeAny | undefined>(
   prompt: string,
   opts: RunOpts<S>,
+  binaryOverride?: string,
 ): Promise<{ text: string; object: unknown }> {
-  const bin = resolveCodexBin();
+  const bin = binaryOverride ?? resolveCodexBin();
   if (!bin) throw new Error("Codex binary not found in Trigger image");
   const selected = CODEX_MODELS[opts.model] ?? CODEX_MODELS.sonnet;
-  const tmp = `/tmp/factory-codex-${opts.triggerRunId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
-  rmSync(tmp, { recursive: true, force: true });
-  mkdirSync(tmp, { recursive: true });
+  const tmp = mkdtempSync(join(tmpdir(), "factory-codex-output-"));
   const outputPath = join(tmp, "final.txt");
-  const args = [
-    "exec",
-    "--model", selected.model,
-    "--config", `model_reasoning_effort=\"${selected.effort}\"`,
-    "--dangerously-bypass-approvals-and-sandbox",
-    "--ignore-user-config",
-    "--output-last-message", outputPath,
-  ];
-  if (opts.schema) {
-    const schemaPath = join(tmp, "schema.json");
-    writeFileSync(schemaPath, JSON.stringify(z.toJSONSchema(opts.schema)));
-    args.push("--output-schema", schemaPath);
+  let launch: CodexLaunch | undefined;
+  try {
+    const currentLaunch = codexLaunch();
+    launch = currentLaunch;
+    const args = [
+      "exec",
+      "--model", selected.model,
+      "--config", `model_reasoning_effort=\"${selected.effort}\"`,
+      "--config", 'forced_login_method="chatgpt"',
+      "--dangerously-bypass-approvals-and-sandbox",
+      "--ignore-user-config",
+      "--output-last-message", outputPath,
+    ];
+    if (opts.schema) {
+      const schemaPath = join(tmp, "schema.json");
+      writeFileSync(schemaPath, JSON.stringify(z.toJSONSchema(opts.schema)));
+      args.push("--output-schema", schemaPath);
+    }
+    const role = AGENT_INSTRUCTIONS[STAGE_AGENT[opts.stage] ?? opts.stage] ?? "You are a senior product and software agent. Complete the task precisely.";
+    args.push(`${role}\n\nTask:\n${prompt}`);
+    const result = await new Promise<{ code: number | null; stderr: string }>((resolve) => {
+      const child = spawn(bin, args, { cwd: opts.cwd, env: currentLaunch.env, stdio: ["ignore", "ignore", "pipe"] });
+      let stderr = "";
+      child.stderr.on("data", (data) => (stderr += data.toString()));
+      child.on("close", (code) => resolve({ code, stderr }));
+      child.on("error", (error) => resolve({ code: -1, stderr: `${stderr}\n${error.message}` }));
+    });
+    if (result.code !== 0) throw new Error(`Codex ${opts.stage} failed (${result.code}): ${result.stderr.slice(-500)}`);
+    const text = existsSync(outputPath) ? readFileSync(outputPath, "utf8").trim() : "";
+    if (!text) throw new Error(`Codex ${opts.stage} returned no final response`);
+    return { text, object: opts.schema ? JSON.parse(text) : undefined };
+  } finally {
+    launch?.cleanup();
+    rmSync(tmp, { recursive: true, force: true });
   }
-  const role = AGENT_INSTRUCTIONS[STAGE_AGENT[opts.stage] ?? opts.stage] ?? "You are a senior product and software agent. Complete the task precisely.";
-  args.push(`${role}\n\nTask:\n${prompt}`);
-  const result = await new Promise<{ code: number | null; stderr: string }>((resolve) => {
-    const child = spawn(bin, args, { cwd: opts.cwd, env: codexEnv(opts.triggerRunId), stdio: ["ignore", "ignore", "pipe"] });
-    let stderr = "";
-    child.stderr.on("data", (data) => (stderr += data.toString()));
-    child.on("close", (code) => resolve({ code, stderr }));
-    child.on("error", (error) => resolve({ code: -1, stderr: `${stderr}\n${error.message}` }));
-  });
-  if (result.code !== 0) throw new Error(`Codex ${opts.stage} failed (${result.code}): ${result.stderr.slice(-500)}`);
-  const text = existsSync(outputPath) ? readFileSync(outputPath, "utf8").trim() : "";
-  if (!text) throw new Error(`Codex ${opts.stage} returned no final response`);
-  return { text, object: opts.schema ? JSON.parse(text) : undefined };
+}
+
+/** Offline launch seam for the fake-CLI contract test; it never resolves a real CLI. */
+export function runCodexCliForTest<S extends z.ZodTypeAny | undefined>(
+  executable: string,
+  prompt: string,
+  opts: RunOpts<S>,
+) {
+  return codexGenerate(prompt, opts, executable);
 }
 
 export type RunOpts<S extends z.ZodTypeAny | undefined> = {
@@ -137,6 +190,8 @@ export async function runAgent<S extends z.ZodTypeAny | undefined = undefined>(
   opts: RunOpts<S>,
 ): Promise<{ text: string; object: S extends z.ZodTypeAny ? z.infer<S> : undefined }> {
   const settings = (await cvxQuery("intake:getSettings")) as { agentProvider?: "codex" | "claude" };
+  // Claude is used only when explicitly selected in settings. A Codex error
+  // must surface to the pipeline; it must never silently become a Claude run.
   const provider = settings.agentProvider === "claude" ? "claude" : "codex";
   const selectedModel = provider === "codex" ? CODEX_MODELS[opts.model]?.model ?? CODEX_MODELS.sonnet.model : opts.model;
   const runId = (await cvxMutation("pipeline:startRun", {

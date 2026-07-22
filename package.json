@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "verify:openai-api-policy": "npx --yes tsx scripts/verify-openai-api-policy.ts"
+    "verify:openai-api-policy": "npx --yes tsx scripts/verify-openai-api-policy.ts",
+    "verify:codex-cli-auth": "npx --yes tsx scripts/verify-codex-cli-auth.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.207",
@@ -15,7 +16,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1085.0",
     "@mastra/claude": "^0.3.0",
     "@mastra/core": "^1.50.1",
-    "@openai/codex": "^0.144.5",
+    "@openai/codex": "0.144.5",
     "@trigger.dev/sdk": "4.5.3",
     "@types/qrcode": "^1.5.6",
     "convex": "^1.42.1",

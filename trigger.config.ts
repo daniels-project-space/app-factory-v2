@@ -3,9 +3,9 @@ import { additionalPackages, aptGet, syncEnvVars } from "@trigger.dev/build/exte
 import { playwright } from "@trigger.dev/build/extensions/playwright";
 
 /**
- * app-factory-jobs — all factory LLM work runs here, on Daniel's Claude Max
- * subscription (CLAUDE_CODE_OAUTH_TOKEN in project env; ANTHROPIC_API_KEY is
- * scrubbed at runtime so the dead platform key can never win).
+ * app-factory-jobs — each run uses the provider explicitly selected in its
+ * settings. Codex receives only the controller's serialized ChatGPT session;
+ * no metered OpenAI API key is synced into this image.
  *
  * The Claude Agent SDK spawns its bundled `claude` CLI as a subprocess, so it
  * must stay OUT of the esbuild bundle and be installed fresh in the Linux
@@ -26,7 +26,7 @@ export default defineConfig({
           "@anthropic-ai/claude-agent-sdk@0.3.207",
           "@mastra/claude@0.3.0",
           "@mastra/core@1.50.1",
-          "@openai/codex@latest",
+          "@openai/codex@0.144.5",
         ],
       }),
       aptGet({ packages: ["git", "ca-certificates"] }),
