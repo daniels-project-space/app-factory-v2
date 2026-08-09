@@ -191,6 +191,52 @@ function AppCard({ app }: { app: Doc<"apps"> }) {
   );
 }
 
+function NativePreviewSummary({ apps }: { apps: Doc<"apps">[] | undefined }) {
+  if (apps === undefined) return null;
+
+  const building = apps.filter(
+    (app) => app.iosPreview?.status === "queued" || app.iosPreview?.status === "building",
+  ).length;
+  const ready = apps.filter((app) => app.iosPreview?.status === "finished").length;
+  const failed = apps.filter((app) => app.iosPreview?.status === "errored").length;
+  const setupRequired = apps.filter(
+    (app) => app.stage === "preview" && app.status === "waiting_approval" && !app.iosPreview,
+  ).length;
+
+  return (
+    <section className="mt-5">
+      <SectionHeader
+        index="//"
+        title="Native iOS previews"
+        right={
+          <Link
+            href="/previews"
+            className="font-mono text-[10px] uppercase tracking-widest text-blue hover:text-amber"
+          >
+            View all →
+          </Link>
+        }
+      />
+      <div className="panel flex flex-wrap items-center gap-x-5 gap-y-3 p-3 sm:p-4">
+        <div>
+          <div className="microlabel">Cloud Simulator builds</div>
+          <p className="mt-1 text-[12px] text-ink-dim">
+            {building > 0
+              ? `${building} build${building === 1 ? "" : "s"} currently running on Expo.`
+              : "No cloud iOS Preview build is currently queued."}
+          </p>
+        </div>
+        <div className="ml-auto flex flex-wrap gap-3 font-mono text-[10px] uppercase tracking-widest">
+          <span className="text-amber">{building} building</span>
+          <span className="text-green">{ready} ready</span>
+          <span className={failed ? "text-red" : "text-ink-faint"}>{failed} failed</span>
+          {setupRequired > 0 && <span className="text-amber">{setupRequired} setup needed</span>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PipelineBoard({ apps }: { apps: Doc<"apps">[] | undefined }) {
   if (apps === undefined) {
     return (
@@ -438,6 +484,7 @@ export default function Dashboard() {
       </div>
 
       <ApprovalsStrip apps={apps} />
+      <NativePreviewSummary apps={apps} />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         <section className="min-w-0">

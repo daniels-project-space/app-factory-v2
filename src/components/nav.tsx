@@ -8,6 +8,7 @@ import { money } from "@/lib/format";
 
 const LINKS = [
   { href: "/", label: "Factory" },
+  { href: "/previews", label: "Previews" },
   { href: "/ideas", label: "Ideas" },
   { href: "/forge", label: "Forge" },
   { href: "/settings", label: "Settings" },
