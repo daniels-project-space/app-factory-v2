@@ -62,8 +62,6 @@ export const byShareToken = query({
       brand: app.brand ?? null,
       demoBuildKey: app.demoBuildKey ?? null,
       demoUpdatedAt: app.demoUpdatedAt ?? null,
-      // A public canonical runtime URL is safe to expose in a share launch card.
-      externalUrl: app.externalUrl ?? null,
     };
   },
 });

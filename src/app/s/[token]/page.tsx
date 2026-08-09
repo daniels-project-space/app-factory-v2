@@ -49,6 +49,13 @@ export default async function SharePage(props: {
     );
   }
 
+  // Share payloads intentionally stay narrow. The existing public bySlug query
+  // provides the launch target needed to turn a share card into a real app link.
+  const runtime = await fetchQuery(api.apps.bySlug, { slug: app.slug }).catch(
+    () => null,
+  );
+  const externalUrl = runtime?.externalUrl ?? null;
+
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? "https";
@@ -56,7 +63,7 @@ export default async function SharePage(props: {
   const factoryWebBuildUrl = app.demoBuildKey
     ? `${proto}://${host}/demo/${app.slug}/`
     : null;
-  const launchUrl = app.externalUrl ?? factoryWebBuildUrl ?? shareUrl;
+  const launchUrl = externalUrl ?? factoryWebBuildUrl ?? shareUrl;
 
   const qr = await QRCode.toDataURL(launchUrl, {
     margin: 1,
@@ -102,7 +109,7 @@ export default async function SharePage(props: {
                   title={`${app.name} live demo`}
                   className="h-[590px] w-full border-0 bg-white"
                 />
-              ) : app.externalUrl ? (
+              ) : externalUrl ? (
                 <div className="flex h-[590px] w-full flex-col items-center justify-center gap-4 bg-[#101010] px-8 text-center">
                   <div
                     className="h-3 w-3 rounded-full"
@@ -119,7 +126,7 @@ export default async function SharePage(props: {
                     to open the real deployed web version.
                   </p>
                   <a
-                    href={app.externalUrl}
+                    href={externalUrl}
                     className="rounded-full px-4 py-2 text-sm font-semibold"
                     style={{ background: primary, color: "#0a0a0a" }}
                   >
@@ -164,7 +171,7 @@ export default async function SharePage(props: {
             />
           </div>
           <p className="text-[12px] uppercase tracking-[0.2em] text-neutral-500">
-            {app.externalUrl || app.demoBuildKey
+            {externalUrl || app.demoBuildKey
               ? "Scan to open the runnable web version"
               : "Scan to open on your phone"}
           </p>
