@@ -12,6 +12,7 @@ export const STAGE_ORDER = [
   "design",
   "build",
   "validate",
+  "preview",
   "review",
   "approval",
   "package",
@@ -220,6 +221,7 @@ export const completeStage = mutation({
       v.literal("loop_build"), // validate/review found fixable problems → back to build
       v.literal("wait_signoff"), // park at CURRENT stage awaiting a human decision
       v.literal("needs_approval"), // park at the ship approval gate
+      v.literal("release_ready"), // packaged; App Store submission remains gated
       v.literal("shipped"),
     ),
     summary: v.string(),
@@ -279,6 +281,9 @@ export const completeStage = mutation({
       stage = "approval";
       stageState = "waiting";
       status = "waiting_approval";
+    } else if (outcome === "release_ready") {
+      stageState = "waiting";
+      status = "release_ready";
     } else if (outcome === "shipped") {
       status = "shipped";
     }
@@ -291,6 +296,139 @@ export const completeStage = mutation({
       ts: now(),
     });
     return { stage, stageState };
+  },
+});
+
+/**
+ * A native Preview build is queued remotely, so the short-lived stage runner
+ * hands the app to the poller instead of holding a Convex lease for EAS's
+ * queue/build time. Only the runner that owns the stage can perform this
+ * handoff.
+ */
+export const handoffIosPreviewBuild = mutation({
+  args: {
+    id: v.id("apps"),
+    workerId: v.string(),
+    buildId: v.string(),
+    detailsUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, workerId, buildId, detailsUrl }) => {
+    const app = await ctx.db.get(id);
+    if (!app) throw new Error("app gone");
+    if (app.stage !== "preview") throw new Error(`expected preview stage, got ${app.stage}`);
+    if (app.lockedBy !== workerId) throw new Error("lock lost");
+
+    await ctx.db.patch(id, {
+      lockedBy: undefined,
+      lockedAt: undefined,
+      stageState: "waiting",
+      status: "active",
+      attempts: 0,
+      lastError: undefined,
+      iosPreview: {
+        buildId,
+        status: "queued",
+        detailsUrl,
+        startedAt: now(),
+      },
+      updatedAt: now(),
+    });
+    await ctx.db.insert("events", {
+      appId: id,
+      kind: "ios_preview_queued",
+      message: `iOS Simulator Preview queued (${buildId})`,
+      ts: now(),
+    });
+  },
+});
+
+/** Complete a handed-off EAS build. The poller is keyed by the immutable EAS build ID. */
+export const completeIosPreviewBuild = mutation({
+  args: {
+    id: v.id("apps"),
+    buildId: v.string(),
+    succeeded: v.boolean(),
+    detailsUrl: v.optional(v.string()),
+    artifactUrl: v.optional(v.string()),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, buildId, succeeded, detailsUrl, artifactUrl, error }) => {
+    const app = await ctx.db.get(id);
+    if (!app) return { skipped: "app gone" };
+    if (app.stage !== "preview" || app.iosPreview?.buildId !== buildId) {
+      return { skipped: "superseded" };
+    }
+
+    const preview = {
+      buildId,
+      status: succeeded ? ("finished" as const) : ("errored" as const),
+      detailsUrl: detailsUrl ?? app.iosPreview.detailsUrl,
+      artifactUrl,
+      error: error?.slice(0, 1800),
+      startedAt: app.iosPreview.startedAt,
+      completedAt: now(),
+    };
+    const stage = succeeded ? "review" : "build";
+    await ctx.db.patch(id, {
+      stage,
+      stageState: "pending",
+      status: "active",
+      lastError: succeeded ? undefined : preview.error,
+      iosPreview: preview,
+      updatedAt: now(),
+    });
+    await ctx.db.insert("events", {
+      appId: id,
+      kind: succeeded ? "ios_preview_ready" : "ios_preview_failed",
+      message: succeeded
+        ? `iOS Simulator Preview finished (${buildId}) → review`
+        : `iOS Simulator Preview failed (${buildId}) → build repair`,
+      ts: now(),
+    });
+    return { stage, succeeded };
+  },
+});
+
+/** Mark a handed-off build as active without allowing stale pollers to overwrite a newer receipt. */
+export const updateIosPreviewStatus = mutation({
+  args: {
+    id: v.id("apps"),
+    buildId: v.string(),
+    status: v.union(v.literal("queued"), v.literal("building")),
+    detailsUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, buildId, status, detailsUrl }) => {
+    const app = await ctx.db.get(id);
+    if (app?.stage !== "preview" || app.iosPreview?.buildId !== buildId) return;
+    await ctx.db.patch(id, {
+      iosPreview: { ...app.iosPreview, status, detailsUrl: detailsUrl ?? app.iosPreview.detailsUrl },
+      updatedAt: now(),
+    });
+  },
+});
+
+/** A lost Expo credential is an operator setup issue, not a code-repair retry. */
+export const parkIosPreviewBuild = mutation({
+  args: { id: v.id("apps"), buildId: v.string(), error: v.string() },
+  handler: async (ctx, { id, buildId, error }) => {
+    const app = await ctx.db.get(id);
+    if (app?.stage !== "preview" || app.iosPreview?.buildId !== buildId) return;
+    await ctx.db.patch(id, {
+      stageState: "waiting",
+      status: "waiting_approval",
+      iosPreview: {
+        ...app.iosPreview,
+        status: "errored",
+        error: error.slice(0, 1800),
+      },
+      updatedAt: now(),
+    });
+    await ctx.db.insert("events", {
+      appId: id,
+      kind: "ios_preview_setup_required",
+      message: "iOS Preview paused until the Expo credential is reconnected",
+      ts: now(),
+    });
   },
 });
 

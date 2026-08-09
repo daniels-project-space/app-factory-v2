@@ -41,6 +41,8 @@ const CODEX_MODELS: Record<string, { model: string; effort: string }> = {
 const STAGE_AGENT: Record<string, string> = {
   triage: "triage",
   "forge-scout": "forge-scout",
+  forgeScout: "forge-scout",
+  ideaScout: "inception",
   inception: "inception",
   roadmap: "roadmap",
   design: "designer",

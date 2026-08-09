@@ -63,6 +63,7 @@ export const STAGES = [
   "design",
   "build",
   "validate",
+  "preview",
   "review",
   "approval",
   "package",

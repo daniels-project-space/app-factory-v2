@@ -103,7 +103,8 @@ export const reportIssues = mutation({
         // Waived issues are never re-raised — that's the anti-ratchet rule.
         if (existing.status === "waived") continue;
         await ctx.db.patch(existing._id, {
-          status: existing.status === "verified" ? "open" : existing.status,
+          // A currently detected issue must re-enter the fix loop unless Daniel waived it.
+          status: "open",
           lastSeenRound: round,
           severity: issue.severity,
           detail: issue.detail,

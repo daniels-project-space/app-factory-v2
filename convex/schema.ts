@@ -10,6 +10,7 @@ export const STAGE_KEYS = [
   "design",
   "build",
   "validate",
+  "preview",
   "review",
   "approval",
   "package",
@@ -21,6 +22,7 @@ const stageKey = v.union(
   v.literal("design"),
   v.literal("build"),
   v.literal("validate"),
+  v.literal("preview"),
   v.literal("review"),
   v.literal("approval"),
   v.literal("package"),
@@ -31,6 +33,7 @@ const appStatus = v.union(
   v.literal("active"),
   v.literal("waiting_approval"),
   v.literal("approved"),
+  v.literal("release_ready"),
   v.literal("shipped"),
   v.literal("paused"),
   v.literal("failed"),
@@ -81,6 +84,25 @@ export default defineSchema({
     shareToken: v.string(), // public share page /s/<token>
     demoBuildKey: v.optional(v.string()), // R2 prefix of latest passing web export
     demoUpdatedAt: v.optional(v.number()),
+    // Native artifacts are built by EAS on Expo's cloud macOS workers. This is
+    // deliberately separate from the web demo so an iPhone-sized browser is
+    // never mistaken for a successfully compiled iOS app.
+    iosPreview: v.optional(
+      v.object({
+        buildId: v.string(),
+        status: v.union(
+          v.literal("queued"),
+          v.literal("building"),
+          v.literal("finished"),
+          v.literal("errored"),
+        ),
+        detailsUrl: v.optional(v.string()),
+        artifactUrl: v.optional(v.string()),
+        error: v.optional(v.string()),
+        startedAt: v.number(),
+        completedAt: v.optional(v.number()),
+      }),
+    ),
     forgeSource: v.optional(
       v.object({ repoUrl: v.string(), license: v.string(), stars: v.number() }),
     ),

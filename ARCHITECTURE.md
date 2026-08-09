@@ -1,6 +1,6 @@
 # App Factory v2 — Architecture
 
-Autonomous idea→shipped-app builder. Full rebuild of the VPS `app-factory` + `autonomous` (Sentinel) stack on the standard platform: **Convex + Trigger.dev + R2 + Vercel + Mastra**, running all LLM work on Daniel's **Claude Max subscription** (Agent SDK + `CLAUDE_CODE_OAUTH_TOKEN`).
+Autonomous idea→release-ready iOS-app builder. Full rebuild of the VPS `app-factory` + `autonomous` (Sentinel) stack on the standard platform: **Convex + Trigger.dev + R2 + Vercel + Mastra**. The selected subscription-backed agent provider is controlled in Convex settings; no stage may silently fall back to billed API credentials.
 
 ## Why v1 died (audit, 2026-07-11)
 
@@ -30,7 +30,7 @@ Trigger.dev (app-factory-jobs / proj_vltrshgupsrfmimsntgm)
       ├─ stage-runner  runs ONE stage for ONE app via Mastra agents
       └─ forge-scout   (daily, gated) finds MIT/Apache OSS conversion candidates
       │
-Claude Max subscription ── @anthropic-ai/claude-agent-sdk, CLAUDE_CODE_OAUTH_TOKEN
+Selected subscription agent ── Codex or Claude, selected in Factory Controls
       │                     (ANTHROPIC_API_KEY scrubbed to "")
 R2 (bucket app-factory-v2) ── web-export demos, screenshots, artifacts
 GitHub (this repo) ── generated apps live in apps/<slug>/, self-contained
@@ -41,21 +41,23 @@ GitHub (this repo) ── generated apps live in apps/<slug>/, self-contained
 - **Target**: Expo SDK 54 mobile apps (App Store one day), scaffolded from `templates/starter/` — a minimal, verified-clean kit (expo-router, NativeWind, tokens, ~15 primitives, auth-ready, paywall abstraction, demo-mode fallbacks). No 146-component dump; quality over volume.
 - **Location**: `apps/<slug>/` in this repo. Fully self-contained (own package.json, no imports from factory code) → extraction to its own repo later = copy folder + `git init`. Non-destructive by construction.
 - **Demo links**: every passing build exports web (`expo export -p web`) → uploaded to R2 → served at `/demo/<slug>/` from the factory app. Public share page `/s/<token>` (no hub chrome, noindex) shows phone-framed demo + QR.
+- **Native Preview**: after web validation, Trigger creates/uses that app's own EAS project and queues an iOS Simulator build on Expo's cloud macOS workers. Convex stores the EAS receipt and a separate poller advances only after a successful native compile. The simulator artifact is installed on Daniel's Mac; physical-device/TestFlight paths remain explicitly gated behind Apple credentials.
 - **Payments**: provider-abstracted paywall. Demo mode = mocked checkout (always works). Web lane = Stripe Checkout (keys in vault). Store lane = RevenueCat wiring, activated at ship time.
 - **Backend**: apps run demo-first (local MMKV/AsyncStorage state); Supabase wiring optional and activated per-app when promoted.
 
 ## Pipeline (state machine in Convex, executed by Trigger)
 
-`inception → roadmap → design → build (N rounds) → validate → review → approved → package → shipped`
+`inception → roadmap → design → build (N rounds) → validate → preview → review → approval → package → release_ready`
 
 - **inception** (Opus): idea → brief — positioning, persona, pricing, MVP feature cut, brand direction. Structured output.
 - **roadmap** (Opus): brief → ≤60 items across 3–5 milestones, each item has machine-checkable acceptance criteria. This is the contract; review may not add scope.
 - **design** (Opus): design language, tokens, screen map, signature element spec. Writes `DESIGN.md` + tokens into the app folder. Optional human sign-off (non-blocking: auto-approves after configurable window unless Daniel holds it).
 - **build round** (Sonnet, agentic): implements next milestone slice in the app folder; inline quality loop (tsc + eslint + expo export web) every few files; commits per slice.
 - **validate** (deterministic + Sonnet fixes): export web → serve → single Playwright suite (cold start, nav walk, auth flow, interaction probe, checkout reach) → screenshots → ONE vision review call. Failures become fingerprinted issues; fix rounds bounded (2 attempts/issue, then flagged for review).
+- **preview** (deterministic): `eas init` links a generated app to its own EAS project if needed, then queues `preview-simulator` with `--no-wait`. A durable poller records the build URL/artifact and routes native compile failures back to the bounded build loop.
 - **review** (Opus, max 2 rounds): full design+code review with screenshots against the roadmap's acceptance criteria only. Verdict: approve / fix-list (bounded) / hold-for-daniel.
 - **approval** (human, batched): Daniel approves in UI → package. The ONLY hard human gate.
-- **package** (Sonnet): store metadata, screenshots, privacy policy → artifacts in R2. EAS/store submission stays a manual-assisted lane.
+- **package** (Sonnet): store metadata, screenshots, privacy policy → artifacts in R2. Completion means `release_ready`; App Store submission remains a separate deliberate action.
 
 Concurrency: 2 stage-runners max (Balanced budget). Model routing lives in ONE config (`src/factory/models.ts`). Global kill switch + daily budget in Convex `settings`.
 

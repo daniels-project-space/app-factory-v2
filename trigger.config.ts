@@ -27,6 +27,7 @@ export default defineConfig({
           "@mastra/claude@0.3.0",
           "@mastra/core@1.50.1",
           "@openai/codex@latest",
+          "eas-cli@21.7.0",
         ],
       }),
       aptGet({ packages: ["git", "ca-certificates"] }),
@@ -35,7 +36,9 @@ export default defineConfig({
         const values: Record<string, string> = {};
         const auth = process.env.CODEX_AUTH_JSON_B64;
         const convex = process.env.FACTORY_CONVEX_URL ?? process.env.NEXT_PUBLIC_CONVEX_URL;
+        const expo = process.env.EXPO_TOKEN;
         if (auth) values.CODEX_AUTH_JSON_B64 = auth;
+        if (expo) values.EXPO_TOKEN = expo;
         if (convex) {
           values.FACTORY_CONVEX_URL = convex;
           values.NEXT_PUBLIC_CONVEX_URL = convex;

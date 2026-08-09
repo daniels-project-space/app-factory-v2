@@ -1,0 +1,22 @@
+{
+  "cli": {
+    "version": ">= 21.7.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview-simulator": {
+      "distribution": "internal",
+      "environment": "preview",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "environment": "preview",
+      "ios": {
+        "simulator": false
+      }
+    }
+  }
+}

@@ -36,7 +36,7 @@ export function StageLed({
   status: string;
 }) {
   let cls = "led-off";
-  if (status === "shipped" || status === "approved") cls = "led-ok";
+  if (status === "shipped" || status === "release_ready" || status === "approved") cls = "led-ok";
   else if (status === "failed" || stageState === "failed") cls = "led-failed";
   else if (status === "paused" || status === "archived") cls = "led-off";
   else if (stageState === "running") cls = "led-running";
@@ -46,6 +46,7 @@ export function StageLed({
 
 export function stateLabel(stageState: string, status: string): string {
   if (status === "shipped") return "shipped";
+  if (status === "release_ready") return "release ready";
   if (status === "paused") return "paused";
   if (status === "failed") return "failed";
   if (status === "archived") return "archived";

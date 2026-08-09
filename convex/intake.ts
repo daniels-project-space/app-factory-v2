@@ -92,6 +92,7 @@ export const requestApproval = mutation({
       v.literal("design"),
       v.literal("build"),
       v.literal("validate"),
+      v.literal("preview"),
       v.literal("review"),
       v.literal("approval"),
       v.literal("package"),

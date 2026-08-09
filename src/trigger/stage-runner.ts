@@ -34,6 +34,8 @@ import {
 import { runGates, runLintAdvisory, type GateIssue } from "./lib/gates";
 import { validateWebBuild } from "./lib/validate";
 import { uploadDir, uploadFile, downloadPrefix } from "./lib/r2";
+import { EasSetupError, ensureEasProject, queueIosSimulatorBuild } from "./lib/eas";
+import { iosPreviewPoller } from "./ios-preview-poller";
 
 type Payload = {
   appId: string;
@@ -114,6 +116,9 @@ export const stageRunner = task({
           break;
         case "validate":
           result = await runValidate(payload, app, workerId);
+          break;
+        case "preview":
+          result = await runPreview(payload, app, workerId);
           break;
         case "review":
           result = await runReview(payload, app, workerId);
@@ -276,7 +281,7 @@ async function runDesign(p: Payload, app: AppDoc, workerId: string) {
 
   // Ported apps arrive with their own DESIGN.md — an Opus redesign would be
   // pure token burn AND scope drift. Honor the existing design, gate as usual.
-  if (!app.forgeSource && existsSync(join(dir, "DESIGN.md")) && app.buildRound === 0) {
+  if (app.forgeSource && existsSync(join(dir, "DESIGN.md")) && app.buildRound === 0) {
     const settings0 = (await cvxQuery("intake:getSettings")) as { designSignoffRequired: boolean };
     if (settings0.designSignoffRequired) {
       await cvxMutation("intake:requestApproval", {
@@ -573,6 +578,49 @@ async function runValidate(p: Payload, app: AppDoc, workerId: string) {
   return { issues: allIssues.length, loop };
 }
 
+async function runPreview(p: Payload, app: AppDoc, workerId: string) {
+  const repo = await prepareRepo();
+  const dir = appDir(repo, app.slug);
+  await ensureDeps(dir);
+
+  try {
+    const project = await ensureEasProject(dir);
+    if (project.created) {
+      await commitAndPush(repo, app.slug, `chore(${app.slug}): link dedicated EAS project`);
+    }
+
+    const build = await queueIosSimulatorBuild(dir);
+    await iosPreviewPoller.trigger(
+      { appId: p.appId, buildId: build.id },
+      { idempotencyKey: `ios-preview:${build.id}` },
+    );
+    await cvxMutation("apps:handoffIosPreviewBuild", {
+      id: p.appId,
+      workerId,
+      buildId: build.id,
+      detailsUrl: build.detailsUrl,
+    });
+    await logEvent(p.appId, "ios_preview_queued", `Cloud iOS Simulator Preview queued: ${build.id}`);
+    return { buildId: build.id, projectId: project.projectId, detailsUrl: build.detailsUrl };
+  } catch (error) {
+    if (!(error instanceof EasSetupError)) throw error;
+    const detail = error.message.slice(0, 1800);
+    await cvxMutation("intake:requestApproval", {
+      appId: p.appId,
+      stage: "preview",
+      question: "Connect an Expo access token before the factory can create this iOS Preview build.",
+      context: detail,
+    });
+    await cvxMutation("apps:completeStage", {
+      id: p.appId,
+      workerId,
+      outcome: "wait_signoff",
+      summary: "iOS Preview setup is waiting for an Expo credential",
+    });
+    return { setupRequired: true };
+  }
+}
+
 async function runReview(p: Payload, app: AppDoc, workerId: string) {
   const repo = await prepareRepo();
   const dir = appDir(repo, app.slug);
@@ -681,8 +729,8 @@ async function runPackage(p: Payload, app: AppDoc, workerId: string) {
   await cvxMutation("apps:completeStage", {
     id: p.appId,
     workerId,
-    outcome: "shipped",
-    summary: "Store collateral ready — EAS submission is the manual lane",
+    outcome: "release_ready",
+    summary: "Store collateral ready — iOS Preview verified; App Store submission remains explicitly gated",
   });
-  return { shipped: true };
+  return { releaseReady: true };
 }

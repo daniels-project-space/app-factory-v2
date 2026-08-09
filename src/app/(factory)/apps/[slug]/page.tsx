@@ -22,10 +22,10 @@ function StageRail({ app }: { app: Doc<"apps"> }) {
   const currentIdx = STAGES.indexOf(app.stage);
   return (
     <div className="mt-4">
-      <div className="grid grid-cols-8 gap-[3px]">
+      <div className="grid grid-cols-9 gap-[3px]">
         {STAGES.map((s, i) => {
           const isCurrent = i === currentIdx;
-          const isDone = i < currentIdx || app.status === "shipped";
+          const isDone = i < currentIdx || app.status === "shipped" || app.status === "release_ready";
           const failed = isCurrent && app.stageState === "failed";
           return (
             <div key={s} className="min-w-0">
@@ -429,6 +429,65 @@ function PhonePreview({ app }: { app: Doc<"apps"> }) {
   );
 }
 
+function NativePreview({ app }: { app: Doc<"apps"> }) {
+  const preview = app.iosPreview;
+  if (!preview) {
+    return (
+      <div className="panel flex items-center gap-2 p-3">
+        <span className="led led-off" />
+        <div>
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-dim">
+            iOS Simulator
+          </div>
+          <div className="mt-0.5 font-mono text-[9px] text-ink-faint">
+            queued after web validation passes
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const href = preview.artifactUrl ?? preview.detailsUrl;
+  const label =
+    preview.status === "finished"
+      ? "ready"
+      : preview.status === "errored"
+        ? "failed"
+        : preview.status;
+  return (
+    <div className="panel p-3">
+      <div className="flex items-center gap-2">
+        <StageLed
+          status={preview.status === "finished" ? "release_ready" : "active"}
+          stageState={preview.status === "errored" ? "failed" : preview.status === "building" ? "running" : "waiting"}
+        />
+        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-dim">
+          iOS Simulator · {label}
+        </div>
+      </div>
+      {preview.error ? (
+        <p className="mt-2 font-mono text-[9px] leading-relaxed text-red">{preview.error}</p>
+      ) : (
+        <p className="mt-2 font-mono text-[9px] leading-relaxed text-ink-faint">
+          {preview.status === "finished"
+            ? "Cloud-built native artifact ready for your Mac’s iOS Simulator."
+            : "EAS is building this on Expo’s cloud macOS workers."}
+        </p>
+      )}
+      {href && (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-block font-mono text-[9px] uppercase tracking-widest text-blue hover:text-amber"
+        >
+          {preview.artifactUrl ? "Open artifact" : "Open EAS build"} →
+        </a>
+      )}
+    </div>
+  );
+}
+
 /* ── page ───────────────────────────────────────────────────────────────── */
 
 const TABS = ["brief", "roadmap", "issues", "runs", "events"] as const;
@@ -617,6 +676,8 @@ export default function AppDetail(props: {
         <aside>
           <div className="microlabel mb-2">Demo preview</div>
           <PhonePreview app={app} />
+          <div className="microlabel mb-2 mt-4">Native Preview</div>
+          <NativePreview app={app} />
           <div className="panel mt-4 p-3">
             <div className="microlabel mb-2">Unit data</div>
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 font-mono text-[10px]">
