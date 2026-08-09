@@ -62,6 +62,8 @@ export const byShareToken = query({
       brand: app.brand ?? null,
       demoBuildKey: app.demoBuildKey ?? null,
       demoUpdatedAt: app.demoUpdatedAt ?? null,
+      // A public canonical runtime URL is safe to expose in a share launch card.
+      externalUrl: app.externalUrl ?? null,
     };
   },
 });
@@ -72,7 +74,11 @@ export const create = mutation({
     name: v.string(),
     oneLiner: v.string(),
     idea: v.string(),
-    origin: v.union(v.literal("daniel"), v.literal("factory"), v.literal("forge")),
+    origin: v.union(
+      v.literal("daniel"),
+      v.literal("factory"),
+      v.literal("forge"),
+    ),
     priority: v.optional(v.number()),
     forgeSource: v.optional(
       v.object({ repoUrl: v.string(), license: v.string(), stars: v.number() }),
@@ -101,7 +107,9 @@ export const create = mutation({
       shareToken: token,
       forgeSource: args.forgeSource,
       attempts: 0,
-      priority: args.priority ?? (args.origin === "daniel" ? 100 : args.origin === "forge" ? 50 : 10),
+      priority:
+        args.priority ??
+        (args.origin === "daniel" ? 100 : args.origin === "forge" ? 50 : 10),
       createdAt: now(),
       updatedAt: now(),
     });
@@ -315,7 +323,8 @@ export const handoffIosPreviewBuild = mutation({
   handler: async (ctx, { id, workerId, buildId, detailsUrl }) => {
     const app = await ctx.db.get(id);
     if (!app) throw new Error("app gone");
-    if (app.stage !== "preview") throw new Error(`expected preview stage, got ${app.stage}`);
+    if (app.stage !== "preview")
+      throw new Error(`expected preview stage, got ${app.stage}`);
     if (app.lockedBy !== workerId) throw new Error("lock lost");
 
     await ctx.db.patch(id, {
@@ -352,7 +361,10 @@ export const completeIosPreviewBuild = mutation({
     artifactUrl: v.optional(v.string()),
     error: v.optional(v.string()),
   },
-  handler: async (ctx, { id, buildId, succeeded, detailsUrl, artifactUrl, error }) => {
+  handler: async (
+    ctx,
+    { id, buildId, succeeded, detailsUrl, artifactUrl, error },
+  ) => {
     const app = await ctx.db.get(id);
     if (!app) return { skipped: "app gone" };
     if (app.stage !== "preview" || app.iosPreview?.buildId !== buildId) {
@@ -401,7 +413,11 @@ export const updateIosPreviewStatus = mutation({
     const app = await ctx.db.get(id);
     if (app?.stage !== "preview" || app.iosPreview?.buildId !== buildId) return;
     await ctx.db.patch(id, {
-      iosPreview: { ...app.iosPreview, status, detailsUrl: detailsUrl ?? app.iosPreview.detailsUrl },
+      iosPreview: {
+        ...app.iosPreview,
+        status,
+        detailsUrl: detailsUrl ?? app.iosPreview.detailsUrl,
+      },
       updatedAt: now(),
     });
   },
@@ -460,7 +476,11 @@ export const failStage = mutation({
 export const setDemo = mutation({
   args: { id: v.id("apps"), demoBuildKey: v.string() },
   handler: async (ctx, { id, demoBuildKey }) => {
-    await ctx.db.patch(id, { demoBuildKey, demoUpdatedAt: now(), updatedAt: now() });
+    await ctx.db.patch(id, {
+      demoBuildKey,
+      demoUpdatedAt: now(),
+      updatedAt: now(),
+    });
   },
 });
 
@@ -471,7 +491,11 @@ export const setPaused = mutation({
     const app = await ctx.db.get(id);
     if (!app) return;
     await ctx.db.patch(id, {
-      status: paused ? "paused" : app.stage === "approval" ? "waiting_approval" : "active",
+      status: paused
+        ? "paused"
+        : app.stage === "approval"
+          ? "waiting_approval"
+          : "active",
       stageState: paused ? app.stageState : "pending",
       updatedAt: now(),
     });
@@ -499,10 +523,14 @@ export const requestChanges = mutation({
     const app = await ctx.db.get(id);
     if (!app) return;
     const jarvisWave = text.match(/^\[JARVIS-GOAL-WAVE-\d+\]/)?.[0];
-    const fingerprint = jarvisWave ? `jarvis:${jarvisWave}` : `daniel:${text.slice(0, 60)}`;
+    const fingerprint = jarvisWave
+      ? `jarvis:${jarvisWave}`
+      : `daniel:${text.slice(0, 60)}`;
     const existing = await ctx.db
       .query("issues")
-      .withIndex("by_app_fingerprint", (q) => q.eq("appId", id).eq("fingerprint", fingerprint))
+      .withIndex("by_app_fingerprint", (q) =>
+        q.eq("appId", id).eq("fingerprint", fingerprint),
+      )
       .first();
     // Jarvis retries this cross-provider mutation until Jarvis Convex records
     // its acknowledgement. Replaying an accepted wave must never reset an app

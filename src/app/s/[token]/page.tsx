@@ -44,9 +44,7 @@ export default async function SharePage(props: {
   if (!app) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
-        <p className="font-mono text-sm text-neutral-500">
-          Nothing here.
-        </p>
+        <p className="font-mono text-sm text-neutral-500">Nothing here.</p>
       </div>
     );
   }
@@ -55,8 +53,12 @@ export default async function SharePage(props: {
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? "https";
   const shareUrl = `${proto}://${host}/s/${token}`;
+  const factoryWebBuildUrl = app.demoBuildKey
+    ? `${proto}://${host}/demo/${app.slug}/`
+    : null;
+  const launchUrl = app.externalUrl ?? factoryWebBuildUrl ?? shareUrl;
 
-  const qr = await QRCode.toDataURL(shareUrl, {
+  const qr = await QRCode.toDataURL(launchUrl, {
     margin: 1,
     width: 220,
     color: { dark: "#0a0a0a", light: "#ffffff" },
@@ -100,6 +102,30 @@ export default async function SharePage(props: {
                   title={`${app.name} live demo`}
                   className="h-[590px] w-full border-0 bg-white"
                 />
+              ) : app.externalUrl ? (
+                <div className="flex h-[590px] w-full flex-col items-center justify-center gap-4 bg-[#101010] px-8 text-center">
+                  <div
+                    className="h-3 w-3 rounded-full"
+                    style={{ background: accent }}
+                  />
+                  <p
+                    className="text-lg font-semibold"
+                    style={{ color: primary }}
+                  >
+                    Deployed web version
+                  </p>
+                  <p className="text-[13px] leading-relaxed text-neutral-500">
+                    This record has no Factory web export. Use the button below
+                    to open the real deployed web version.
+                  </p>
+                  <a
+                    href={app.externalUrl}
+                    className="rounded-full px-4 py-2 text-sm font-semibold"
+                    style={{ background: primary, color: "#0a0a0a" }}
+                  >
+                    Open {app.name} ↗
+                  </a>
+                </div>
               ) : (
                 <div className="flex h-[590px] w-full flex-col items-center justify-center gap-4 bg-[#101010] px-8">
                   <div
@@ -130,10 +156,17 @@ export default async function SharePage(props: {
             style={{ boxShadow: `0 0 0 1px ${accent}55` }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qr} alt="QR code for this page" width={150} height={150} />
+            <img
+              src={qr}
+              alt="QR code for this page"
+              width={150}
+              height={150}
+            />
           </div>
           <p className="text-[12px] uppercase tracking-[0.2em] text-neutral-500">
-            Scan to open on your phone
+            {app.externalUrl || app.demoBuildKey
+              ? "Scan to open the runnable web version"
+              : "Scan to open on your phone"}
           </p>
         </div>
 

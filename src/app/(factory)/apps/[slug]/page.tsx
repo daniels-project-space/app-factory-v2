@@ -25,7 +25,10 @@ function StageRail({ app }: { app: Doc<"apps"> }) {
       <div className="grid grid-cols-9 gap-[3px]">
         {STAGES.map((s, i) => {
           const isCurrent = i === currentIdx;
-          const isDone = i < currentIdx || app.status === "shipped" || app.status === "release_ready";
+          const isDone =
+            i < currentIdx ||
+            app.status === "shipped" ||
+            app.status === "release_ready";
           const failed = isCurrent && app.stageState === "failed";
           return (
             <div key={s} className="min-w-0">
@@ -81,6 +84,111 @@ function StageRail({ app }: { app: Doc<"apps"> }) {
 
 /* ── actions ────────────────────────────────────────────────────────────── */
 
+function RuntimeBuildState({ app }: { app: Doc<"apps"> }) {
+  const preview = app.iosPreview;
+  const nativeHref = preview?.artifactUrl ?? preview?.detailsUrl;
+  const isArchived = app.status === "archived";
+  const hasWebExport = Boolean(app.demoBuildKey);
+  const hasNativeArtifact =
+    preview?.status === "finished" && Boolean(nativeHref);
+  const webLabel = isArchived ? "Open web archive" : "Open live app";
+
+  const nativeState = !preview
+    ? "No iOS Simulator build receipt"
+    : preview.status === "finished"
+      ? "Simulator artifact ready"
+      : preview.status === "errored"
+        ? "Cloud build failed"
+        : "Cloud build in progress";
+
+  return (
+    <section
+      data-testid="runtime-build-state"
+      className="mt-4 border border-line-bright bg-void/40 p-3 sm:p-4"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="microlabel text-amber">Runtime &amp; build state</div>
+          <p className="mt-1 max-w-3xl text-[12px] leading-snug text-ink-dim">
+            {app.externalUrl
+              ? isArchived
+                ? "A deployed web successor is available. It is separate from this archived Factory record and is not an iOS artifact."
+                : "A deployed web runtime is available alongside this Factory record."
+              : "No runnable app is registered yet — this page is Factory work and build telemetry."}
+          </p>
+        </div>
+        <Link
+          href="/previews"
+          className="font-mono text-[10px] uppercase tracking-widest text-blue hover:text-amber"
+        >
+          iOS build ledger →
+        </Link>
+      </div>
+
+      <div className="mt-3 grid gap-px border border-line bg-line sm:grid-cols-3">
+        <div className="bg-panel px-3 py-2">
+          <div className="microlabel">Deployed web</div>
+          <div
+            className={`mt-1 font-mono text-[10px] uppercase tracking-widest ${app.externalUrl ? "text-green" : "text-ink-faint"}`}
+          >
+            {app.externalUrl
+              ? isArchived
+                ? "archive available"
+                : "available"
+              : "not registered"}
+          </div>
+        </div>
+        <div className="bg-panel px-3 py-2">
+          <div className="microlabel">Factory web export</div>
+          <div
+            className={`mt-1 font-mono text-[10px] uppercase tracking-widest ${hasWebExport ? "text-green" : "text-ink-faint"}`}
+          >
+            {hasWebExport ? "ready" : "not produced"}
+          </div>
+        </div>
+        <div className="bg-panel px-3 py-2">
+          <div className="microlabel">iOS Simulator</div>
+          <div
+            className={`mt-1 font-mono text-[10px] uppercase tracking-widest ${hasNativeArtifact ? "text-green" : preview?.status === "errored" ? "text-red" : preview ? "text-amber" : "text-ink-faint"}`}
+          >
+            {nativeState}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {app.externalUrl && (
+          <a
+            className="btn btn-hot"
+            href={app.externalUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {webLabel} ↗
+          </a>
+        )}
+        {app.demoBuildKey && (
+          <a
+            className="btn"
+            href={`/demo/${app.slug}/`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open Factory web build ↗
+          </a>
+        )}
+        {nativeHref && (
+          <a className="btn" href={nativeHref} target="_blank" rel="noreferrer">
+            {preview?.artifactUrl
+              ? "Open iOS Simulator artifact ↗"
+              : "Open EAS build ↗"}
+          </a>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function Actions({ app }: { app: Doc<"apps"> }) {
   const setPaused = useMutation(api.apps.setPaused);
   const retry = useMutation(api.apps.retry);
@@ -109,6 +217,19 @@ function Actions({ app }: { app: Doc<"apps"> }) {
     setSent(true);
     setTimeout(() => setSent(false), 2000);
   };
+
+  if (app.status === "archived") {
+    return (
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <span className="microlabel text-ink-faint">
+          Archive record · Factory controls disabled
+        </span>
+        <button className="btn" onClick={copyShare}>
+          {copied ? "Copied ✓" : "Copy public link"}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-4">
@@ -212,13 +333,16 @@ function RoadmapTab({ items }: { items: Doc<"roadmapItems">[] | undefined }) {
             </div>
             <ul>
               {rows.map((r) => {
-                const [icon, color] = ROADMAP_ICON[r.status] ?? ROADMAP_ICON.todo;
+                const [icon, color] =
+                  ROADMAP_ICON[r.status] ?? ROADMAP_ICON.todo;
                 return (
                   <li
                     key={r._id}
                     className="flex gap-2 border-b border-line/40 py-1.5 last:border-0"
                   >
-                    <span className={`font-mono text-[13px] leading-tight ${color}`}>
+                    <span
+                      className={`font-mono text-[13px] leading-tight ${color}`}
+                    >
                       {icon}
                     </span>
                     <div className="min-w-0">
@@ -325,13 +449,20 @@ function RunsTab({ runs }: { runs: Doc<"runs">[] | undefined }) {
       <table className="w-full min-w-[560px] border-collapse font-mono text-[11px]">
         <thead>
           <tr className="border-b-2 border-line text-left">
-            {["Stage", "Model", "Status", "In", "Out", "Cost", "Time", "When"].map(
-              (h) => (
-                <th key={h} className="microlabel py-1.5 pr-3 font-normal">
-                  {h}
-                </th>
-              ),
-            )}
+            {[
+              "Stage",
+              "Model",
+              "Status",
+              "In",
+              "Out",
+              "Cost",
+              "Time",
+              "When",
+            ].map((h) => (
+              <th key={h} className="microlabel py-1.5 pr-3 font-normal">
+                {h}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -352,8 +483,12 @@ function RunsTab({ runs }: { runs: Doc<"runs">[] | undefined }) {
               >
                 {r.status}
               </td>
-              <td className="py-1.5 pr-3 text-ink-dim">{tokens(r.inputTokens)}</td>
-              <td className="py-1.5 pr-3 text-ink-dim">{tokens(r.outputTokens)}</td>
+              <td className="py-1.5 pr-3 text-ink-dim">
+                {tokens(r.inputTokens)}
+              </td>
+              <td className="py-1.5 pr-3 text-ink-dim">
+                {tokens(r.outputTokens)}
+              </td>
               <td className="py-1.5 pr-3 text-ink">{money(r.costUsd)}</td>
               <td className="py-1.5 pr-3 text-ink-dim">
                 {duration(r.startedAt, r.endedAt)}
@@ -378,7 +513,10 @@ function EventsTab({ events }: { events: Doc<"events">[] | undefined }) {
   return (
     <ol>
       {events.map((e) => (
-        <li key={e._id} className="border-b border-line/50 py-1.5 last:border-0">
+        <li
+          key={e._id}
+          className="border-b border-line/50 py-1.5 last:border-0"
+        >
           <div className="flex items-baseline gap-2">
             <span className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-amber">
               {e.kind.replace(/_/g, " ")}
@@ -387,7 +525,9 @@ function EventsTab({ events }: { events: Doc<"events">[] | undefined }) {
               {timeAgo(e.ts, now)}
             </span>
           </div>
-          <div className="text-[12px] leading-snug text-ink-dim">{e.message}</div>
+          <div className="text-[12px] leading-snug text-ink-dim">
+            {e.message}
+          </div>
         </li>
       ))}
     </ol>
@@ -398,12 +538,17 @@ function EventsTab({ events }: { events: Doc<"events">[] | undefined }) {
 
 function PhonePreview({ app }: { app: Doc<"apps"> }) {
   if (!app.demoBuildKey) {
+    const archived = app.status === "archived";
     return (
       <div className="panel flex flex-col items-center justify-center gap-2 p-8">
         <span className="led led-waiting" />
-        <span className="microlabel">Demo brewing</span>
+        <span className="microlabel">
+          {archived ? "No Factory web export" : "Demo brewing"}
+        </span>
         <span className="text-center font-mono text-[10px] text-ink-faint">
-          web export lands here after the first passing build
+          {archived
+            ? "this archived record has no Factory-produced web build"
+            : "web export lands here after the first passing build"}
         </span>
       </div>
     );
@@ -432,6 +577,7 @@ function PhonePreview({ app }: { app: Doc<"apps"> }) {
 function NativePreview({ app }: { app: Doc<"apps"> }) {
   const preview = app.iosPreview;
   if (!preview) {
+    const archived = app.status === "archived";
     return (
       <div className="panel flex items-center gap-2 p-3">
         <span className="led led-off" />
@@ -440,7 +586,9 @@ function NativePreview({ app }: { app: Doc<"apps"> }) {
             iOS Simulator
           </div>
           <div className="mt-0.5 font-mono text-[9px] text-ink-faint">
-            queued after web validation passes
+            {archived
+              ? "no Factory iOS build was queued for this archived record"
+              : "queued after web validation passes"}
           </div>
         </div>
       </div>
@@ -459,14 +607,22 @@ function NativePreview({ app }: { app: Doc<"apps"> }) {
       <div className="flex items-center gap-2">
         <StageLed
           status={preview.status === "finished" ? "release_ready" : "active"}
-          stageState={preview.status === "errored" ? "failed" : preview.status === "building" ? "running" : "waiting"}
+          stageState={
+            preview.status === "errored"
+              ? "failed"
+              : preview.status === "building"
+                ? "running"
+                : "waiting"
+          }
         />
         <div className="font-mono text-[10px] uppercase tracking-widest text-ink-dim">
           iOS Simulator · {label}
         </div>
       </div>
       {preview.error ? (
-        <p className="mt-2 font-mono text-[9px] leading-relaxed text-red">{preview.error}</p>
+        <p className="mt-2 font-mono text-[9px] leading-relaxed text-red">
+          {preview.error}
+        </p>
       ) : (
         <p className="mt-2 font-mono text-[9px] leading-relaxed text-ink-faint">
           {preview.status === "finished"
@@ -499,18 +655,9 @@ export default function AppDetail(props: {
   const { slug } = use(props.params);
   const app = useQuery(api.apps.bySlug, { slug });
   const appId = app?._id;
-  const roadmap = useQuery(
-    api.pipeline.roadmap,
-    appId ? { appId } : "skip",
-  );
-  const issues = useQuery(
-    api.pipeline.allIssues,
-    appId ? { appId } : "skip",
-  );
-  const runs = useQuery(
-    api.pipeline.recentRuns,
-    appId ? { appId } : "skip",
-  );
+  const roadmap = useQuery(api.pipeline.roadmap, appId ? { appId } : "skip");
+  const issues = useQuery(api.pipeline.allIssues, appId ? { appId } : "skip");
+  const runs = useQuery(api.pipeline.recentRuns, appId ? { appId } : "skip");
   const events = useQuery(
     api.pipeline.recentEvents,
     appId ? { appId, limit: 60 } : "skip",
@@ -518,7 +665,11 @@ export default function AppDetail(props: {
   const [tab, setTab] = useState<Tab>("brief");
 
   if (app === undefined) {
-    return <div className="microlabel animate-pulse py-16 text-center">Locating unit…</div>;
+    return (
+      <div className="microlabel animate-pulse py-16 text-center">
+        Locating unit…
+      </div>
+    );
   }
   if (app === null) {
     return (
@@ -591,22 +742,21 @@ export default function AppDetail(props: {
         {app.pricing && (
           <p className="mt-1 font-mono text-[11px] text-amber">{app.pricing}</p>
         )}
+        <RuntimeBuildState app={app} />
         {app.portfolioDisposition && (
           <div className="mt-3 flex flex-wrap items-center gap-2 border border-line bg-void/40 px-2.5 py-2 font-mono text-[10px] uppercase tracking-widest">
             <span className="text-ink-faint">portfolio record</span>
-            <span className={app.portfolioDisposition === "successor_live" ? "text-green" : "text-ink-dim"}>
-              {app.portfolioDisposition === "successor_live" ? "successor live" : "retired"}
+            <span
+              className={
+                app.portfolioDisposition === "successor_live"
+                  ? "text-green"
+                  : "text-ink-dim"
+              }
+            >
+              {app.portfolioDisposition === "successor_live"
+                ? "successor live"
+                : "retired"}
             </span>
-            {app.externalUrl && (
-              <a
-                href={app.externalUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue hover:text-amber"
-              >
-                open canonical app ↗
-              </a>
-            )}
           </div>
         )}
         {app.lastError && (
@@ -699,7 +849,10 @@ export default function AppDetail(props: {
                       rel="noreferrer"
                       className="text-blue hover:text-amber"
                     >
-                      {app.forgeSource.repoUrl.replace("https://github.com/", "")}
+                      {app.forgeSource.repoUrl.replace(
+                        "https://github.com/",
+                        "",
+                      )}
                     </a>{" "}
                     <span className="text-ink-faint">
                       ★{app.forgeSource.stars} {app.forgeSource.license}

@@ -144,6 +144,9 @@ function ApprovalsStrip({ apps }: { apps: Doc<"apps">[] | undefined }) {
 
 function AppCard({ app }: { app: Doc<"apps"> }) {
   const label = stateLabel(app.stageState, app.status);
+  const webLabel = app.portfolioDisposition
+    ? "Open web version"
+    : "Open live app";
   const edge =
     label === "failed"
       ? "border-red/50"
@@ -152,11 +155,8 @@ function AppCard({ app }: { app: Doc<"apps"> }) {
         : label === "running"
           ? "border-line-bright"
           : "border-line";
-  return (
-    <Link
-      href={`/apps/${app.slug}`}
-      className={`panel block border ${edge} p-2.5 hover:border-amber/70 transition-colors group`}
-    >
+  const card = (
+    <>
       <div className="font-display font-bold uppercase tracking-wide text-[13px] leading-tight text-ink group-hover:text-amber-hot">
         {app.name}
       </div>
@@ -187,6 +187,41 @@ function AppCard({ app }: { app: Doc<"apps"> }) {
           </span>
         </span>
       </div>
+    </>
+  );
+
+  if (app.externalUrl) {
+    return (
+      <div
+        className={`panel border ${edge} p-2.5 transition-colors hover:border-amber/70`}
+      >
+        <a
+          href={app.externalUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="group block"
+        >
+          {card}
+          <span className="mt-2 block font-mono text-[9px] uppercase tracking-widest text-amber group-hover:text-amber-hot">
+            {webLabel} ↗
+          </span>
+        </a>
+        <Link
+          href={`/apps/${app.slug}`}
+          className="mt-1 block font-mono text-[9px] uppercase tracking-widest text-ink-faint hover:text-blue"
+        >
+          Factory details →
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={`/apps/${app.slug}`}
+      className={`panel block border ${edge} p-2.5 transition-colors hover:border-amber/70 group`}
+    >
+      {card}
     </Link>
   );
 }
@@ -195,12 +230,21 @@ function NativePreviewSummary({ apps }: { apps: Doc<"apps">[] | undefined }) {
   if (apps === undefined) return null;
 
   const building = apps.filter(
-    (app) => app.iosPreview?.status === "queued" || app.iosPreview?.status === "building",
+    (app) =>
+      app.iosPreview?.status === "queued" ||
+      app.iosPreview?.status === "building",
   ).length;
-  const ready = apps.filter((app) => app.iosPreview?.status === "finished").length;
-  const failed = apps.filter((app) => app.iosPreview?.status === "errored").length;
+  const ready = apps.filter(
+    (app) => app.iosPreview?.status === "finished",
+  ).length;
+  const failed = apps.filter(
+    (app) => app.iosPreview?.status === "errored",
+  ).length;
   const setupRequired = apps.filter(
-    (app) => app.stage === "preview" && app.status === "waiting_approval" && !app.iosPreview,
+    (app) =>
+      app.stage === "preview" &&
+      app.status === "waiting_approval" &&
+      !app.iosPreview,
   ).length;
 
   return (
@@ -229,8 +273,12 @@ function NativePreviewSummary({ apps }: { apps: Doc<"apps">[] | undefined }) {
         <div className="ml-auto flex flex-wrap gap-3 font-mono text-[10px] uppercase tracking-widest">
           <span className="text-amber">{building} building</span>
           <span className="text-green">{ready} ready</span>
-          <span className={failed ? "text-red" : "text-ink-faint"}>{failed} failed</span>
-          {setupRequired > 0 && <span className="text-amber">{setupRequired} setup needed</span>}
+          <span className={failed ? "text-red" : "text-ink-faint"}>
+            {failed} failed
+          </span>
+          {setupRequired > 0 && (
+            <span className="text-amber">{setupRequired} setup needed</span>
+          )}
         </div>
       </div>
     </section>
@@ -297,16 +345,28 @@ function PipelineBoard({ apps }: { apps: Doc<"apps">[] | undefined }) {
 
 function PortfolioCard({ app }: { app: Doc<"apps"> }) {
   const successor = app.portfolioDisposition === "successor_live";
+  const webLabel = successor ? "Open web archive" : "Open live app";
   return (
     <div className="panel border border-line p-3">
       <div className="flex items-start gap-2">
         <div className="min-w-0">
-          <Link
-            href={`/apps/${app.slug}`}
-            className="font-display font-bold uppercase tracking-wide text-[13px] leading-tight text-ink hover:text-amber-hot"
-          >
-            {app.name}
-          </Link>
+          {app.externalUrl ? (
+            <a
+              href={app.externalUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="font-display font-bold uppercase tracking-wide text-[13px] leading-tight text-ink hover:text-amber-hot"
+            >
+              {app.name} ↗
+            </a>
+          ) : (
+            <Link
+              href={`/apps/${app.slug}`}
+              className="font-display font-bold uppercase tracking-wide text-[13px] leading-tight text-ink hover:text-amber-hot"
+            >
+              {app.name}
+            </Link>
+          )}
           <p className="mt-1 text-[11px] leading-snug text-ink-dim">
             {app.oneLiner}
           </p>
@@ -321,16 +381,24 @@ function PortfolioCard({ app }: { app: Doc<"apps"> }) {
           {successor ? "successor live" : "retired"}
         </span>
       </div>
-      {app.externalUrl && (
-        <a
-          href={app.externalUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 inline-block font-mono text-[10px] uppercase tracking-widest text-blue hover:text-amber"
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-widest">
+        {app.externalUrl && (
+          <a
+            href={app.externalUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-amber hover:text-amber-hot"
+          >
+            {webLabel} ↗
+          </a>
+        )}
+        <Link
+          href={`/apps/${app.slug}`}
+          className="text-ink-faint hover:text-blue"
         >
-          Open canonical app ↗
-        </a>
-      )}
+          Factory details →
+        </Link>
+      </div>
     </div>
   );
 }
@@ -473,11 +541,18 @@ export default function Dashboard() {
         <div className="bg-panel px-3 py-2 col-span-2 sm:col-span-1">
           <div className="microlabel">Spend today</div>
           <div className="font-display font-bold text-[22px] leading-none mt-1">
-            <span className={spent >= (settings?.dailyBudgetUsd ?? Infinity) ? "text-red" : "text-ink"}>
+            <span
+              className={
+                spent >= (settings?.dailyBudgetUsd ?? Infinity)
+                  ? "text-red"
+                  : "text-ink"
+              }
+            >
               {money(spent)}
             </span>
             <span className="text-[13px] text-ink-faint font-mono">
-              {" "}/ {money(settings?.dailyBudgetUsd ?? 0)}
+              {" "}
+              / {money(settings?.dailyBudgetUsd ?? 0)}
             </span>
           </div>
         </div>
