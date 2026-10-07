@@ -32,6 +32,35 @@ export async function prepareRepo(): Promise<string> {
 
 export const appDir = (repo: string, slug: string) => join(repo, REPO.appsDir, slug);
 
+/** Vendor portable cost checks without replacing upstream app guidance. */
+export function installCloudCostDefaults(repo: string, dst: string): void {
+  mkdirSync(join(dst, "scripts"), { recursive: true });
+  const checkerSource = join(repo, "scripts", "check-cloud-cost.cjs");
+  const checkerTarget = join(dst, "scripts", "check-cloud-cost.cjs");
+  if (existsSync(checkerTarget) && readFileSync(checkerTarget, "utf8") !== readFileSync(checkerSource, "utf8")) {
+    throw new Error("Existing app cloud-cost checker differs; preserve upstream checks and resolve the filename collision before scaffolding");
+  }
+  cpSync(checkerSource, checkerTarget);
+  cpSync(join(repo, "CLOUD_COST_DEFAULTS.md"), join(dst, "CLOUD_COST_DEFAULTS.md"));
+  const packagePath = join(dst, "package.json");
+  const pkg = JSON.parse(readFileSync(packagePath, "utf8"));
+  // Preserve a ported application's existing validation command.
+  const previous = pkg.scripts?.["check:cloud-cost"];
+  const check = "node scripts/check-cloud-cost.cjs";
+  pkg.scripts = { ...pkg.scripts, "check:cloud-cost": previous && previous !== check ? (previous.startsWith(`${check} && `) ? previous : `${check} && ${previous}`) : check };
+  writeFileSync(packagePath, JSON.stringify(pkg, null, 2) + "\n");
+  const guidancePath = join(dst, "AGENTS.md");
+  const guidance = existsSync(guidancePath) ? readFileSync(guidancePath, "utf8") : "";
+  const heading = "## Cloud cost requirements";
+  if (!guidance.includes(heading)) writeFileSync(guidancePath, guidance + "\n" + heading + "\n\nRead CLOUD_COST_DEFAULTS.md. Run check:cloud-cost in normal CI before deployment. Preserve models, render quality, security, recovery and customer latency; use indexed/paginated data reads and bounded retries.\n");
+  for (const file of [".gitignore", ".vercelignore", ".dockerignore"]) {
+    const target = join(dst, file);
+    const previous = existsSync(target) ? readFileSync(target, "utf8") : "";
+    const missing = ["graphify-out/", ".serena/"].filter(line => !previous.split(/\r?\n/).includes(line));
+    if (missing.length) writeFileSync(target, previous + "\n" + missing.join("\n") + "\n");
+  }
+}
+
 /**
  * Scaffold a new app from templates/starter. Deterministic — zero LLM tokens.
  * The app folder is fully self-contained so it can later be extracted to its
@@ -63,6 +92,7 @@ export function scaffoldApp(repo: string, slug: string, name: string): string {
   appJson.expo.experiments = { ...(appJson.expo.experiments ?? {}), baseUrl: `/demo/${slug}` };
   writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2));
   mkdirSync(join(dst, ".factory"), { recursive: true });
+  installCloudCostDefaults(repo, dst);
   return dst;
 }
 
@@ -93,6 +123,7 @@ export async function portForgeSource(
     join(dst, ".factory", "FORGE.md"),
     `Ported from ${sourceRepoUrl} — upstream LICENSE retained in this folder (legal requirement). All upstream names/logos must be replaced; LICENSE file must never be removed.`,
   );
+  installCloudCostDefaults(repo, dst);
   return dst;
 }
 
