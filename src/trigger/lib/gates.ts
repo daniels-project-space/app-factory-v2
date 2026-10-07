@@ -24,6 +24,16 @@ export type GateResult = {
 export async function runGates(dir: string): Promise<GateResult> {
   const issues: GateIssue[] = [];
 
+  // Execute the trusted repository guard against generated source. An app
+  // cannot remove its local script to bypass validation in the factory.
+  const checker = join(dir, "..", "..", "scripts", "check-cloud-cost.cjs");
+  const cost = await sh("node", [checker, dir], { cwd: dir, timeoutMs: 60_000 });
+  if (cost.code !== 0) issues.push({
+    fingerprint: "gate:cloud-cost", severity: "P0", source: "gate",
+    title: "Cloud cost source guard failed",
+    detail: (cost.stdout + cost.stderr).slice(-3500),
+  });
+
   // 1. TypeScript — blocking.
   const tsc = await npx(["tsc", "--noEmit"], { cwd: dir, timeoutMs: 5 * 60 * 1000 });
   if (tsc.code !== 0) {

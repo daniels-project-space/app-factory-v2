@@ -48,3 +48,7 @@ next-env.d.ts
 apps/*/node_modules/
 apps/*/dist/
 apps/*/.expo/
+
+# Local code navigation artifacts
+graphify-out/
+.serena/

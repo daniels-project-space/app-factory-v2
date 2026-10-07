@@ -389,6 +389,7 @@ async function runBuild(p: Payload, app: AppDoc, workerId: string) {
 
   const prompt = [
     `App: ${app.name} — ${app.oneLiner} (build round ${app.buildRound + 1})`,
+    "COST AND QUALITY: read CLOUD_COST_DEFAULTS.md when present and run the portable check:cloud-cost command. Use indexed bounded data reads and bounded configuration-failure retries; preserve model choices, render quality, security, recovery and customer latency. Cloud-cost validation is blocking alongside all existing quality checks.",
     fixables.length
       ? `\nOPEN ISSUES — fix these FIRST:\n${fixables
           .map((i, n) => `${n + 1}. [${i.severity}] (${i.fingerprint}) ${i.title}\n   ${i.detail.slice(0, 400)}`)
